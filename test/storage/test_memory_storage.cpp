@@ -1,10 +1,12 @@
 #include <iostream>
 #include "storage/memory_storage.h"
 #include "utils/log_utils.h"
+#include <gtest/gtest.h>
 
-int main(int argc,char* argv[]) {
 
-    LogUtils::init(argv[0]);
+GTEST_TEST(StorageTest,WriteRead) {
+    //LogUtils::log_level="3";
+    LogUtils::init("test");
 
     MemoryStorage* ms = new MemoryStorage();
     uint8_t buffer[BLOCK_SIZE];
@@ -18,10 +20,6 @@ int main(int argc,char* argv[]) {
     ms->read_block(0,buffer2);
 
     for(int i=0;i<BLOCK_SIZE;i++) {
-        if(buffer[i]!=buffer2[i]) {
-            std::cout << "Error" << std::endl;
-            break;
-        }
+        EXPECT_EQ(buffer[i],buffer2[i]) << "Data Differs at Block 0";
     }
-    return 0;
 }
