@@ -1,6 +1,7 @@
 #include "storage/memory_storage.h"
 #include "utils/log_utils.h"
 #include <cstring>
+#include <iostream>
 /** 
  * @brief read Block id to dst
  * @return 1 for sucess, 0 for fail
@@ -28,3 +29,26 @@ int MemoryStorage::write_block(BLOCK_ID id, const uint8_t* src) {
     LOG(INFO) << "Writing Block " << id;
     return 1;
 }
+
+#ifdef DEBUG
+void MemoryStorage::dump_block(BLOCK_ID id,DumpF f) {
+    if(id >= NR_BLOCKS) {
+        LOG(ERROR) << "Dumping Block " << id << " out of Range.";
+        return;
+    }
+    if(f) {
+        f(buffer + id*BLOCK_SIZE);
+    } else {
+        std::cout << std::hex;
+        for(int i=0;i<BLOCK_SIZE;i++){
+            std::cout << (uint32_t)buffer[i+id*BLOCK_SIZE] << " ";
+        }
+        std::cout << std::endl;
+    }
+}
+
+void MemoryStorage::dump_range(BLOCK_ID sid, BLOCK_ID eid,DumpF f) {
+    for(auto i=0;i<eid && i<NR_BLOCKS;i++)
+        dump_block(i,f);
+}
+#endif

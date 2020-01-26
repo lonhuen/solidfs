@@ -19,6 +19,10 @@ GTEST_TEST(StorageTest,WriteRead) {
     ms->write_block(0,buffer);
     ms->read_block(0,buffer2);
 
+//    ms->dump_block(0);
+    ms->dump_block(2049);
+    ms->dump_range(0,1);
+
     for(int i=0;i<BLOCK_SIZE;i++) {
         EXPECT_EQ(buffer[i],buffer2[i]) << "Data Differs at Block 0";
     }
