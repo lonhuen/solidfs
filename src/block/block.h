@@ -5,5 +5,8 @@
 struct Block{
     union {
         uint8_t data[BLOCK_SIZE];
+        struct{
+            BLOCK_ID fl_entry[BLOCK_SIZE/sizeof(BLOCK_ID)];
+        };
     };
 };

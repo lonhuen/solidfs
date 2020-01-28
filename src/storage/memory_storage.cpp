@@ -2,6 +2,15 @@
 #include "utils/log_utils.h"
 #include <cstring>
 #include <iostream>
+
+MemoryStorage::MemoryStorage(BLOCK_ID nr_blocks) : NR_BLOCKS(nr_blocks) {
+    data = new uint8_t[NR_BLOCKS * BLOCK_SIZE];
+}
+
+MemoryStorage::~MemoryStorage() {
+    delete []data;
+}
+
 /** 
  * @brief read Block id to dst
  * @return 1 for sucess, 0 for fail
@@ -11,7 +20,7 @@ int MemoryStorage::read_block(BLOCK_ID id, uint8_t* dst) {
         LOG(ERROR) << "Reading Block " << id << " out of Range " << NR_BLOCKS;
         return 0;
     }
-    memcpy(dst,buffer+id*BLOCK_SIZE,BLOCK_SIZE);
+    memcpy(dst,data + id*BLOCK_SIZE,BLOCK_SIZE);
     LOG(INFO) << "Reading Block " << id;
     return 1;
 }
@@ -25,7 +34,7 @@ int MemoryStorage::write_block(BLOCK_ID id, const uint8_t* src) {
         LOG(ERROR) << "Writing Block " << id << " out of Range " << NR_BLOCKS;
         return 0;
     }
-    memcpy(buffer+id*BLOCK_SIZE, src, BLOCK_SIZE);
+    memcpy(data + id*BLOCK_SIZE, src, BLOCK_SIZE);
     LOG(INFO) << "Writing Block " << id;
     return 1;
 }
@@ -37,11 +46,11 @@ void MemoryStorage::dump_block(BLOCK_ID id,DumpF f) {
         return;
     }
     if(f) {
-        f(buffer + id*BLOCK_SIZE);
+        f(data + id*BLOCK_SIZE);
     } else {
         std::cout << std::hex;
         for(int i=0;i<BLOCK_SIZE;i++){
-            std::cout << (uint32_t)buffer[i+id*BLOCK_SIZE] << " ";
+            std::cout << (uint32_t)data[i+id*BLOCK_SIZE] << " ";
         }
         std::cout << std::endl;
     }

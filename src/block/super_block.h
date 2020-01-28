@@ -1,16 +1,19 @@
 #pragma once
 #include "common.h"
 
-struct super_block{
-    uint32_t magic_number;
+union super_block{
+    struct {
+        uint32_t magic_number;
 
-    BLOCK_ID nr_blocks;
-    
-    BLOCK_ID s_inode;
-    BLOCK_ID nr_inodes;
-    
-    BLOCK_ID s_dblocks;
-    BLOCK_ID nr_dblocks;
-    
-    BLOCK_ID id_free_dblocks;
+        BLOCK_ID nr_block;
+        
+        BLOCK_ID s_inode;
+        BLOCK_ID nr_inode;
+        
+        BLOCK_ID s_dblock;
+        BLOCK_ID nr_dblock;
+        
+        BLOCK_ID id_free_dblock;
+    };
+    uint8_t data[BLOCK_SIZE];
 };
