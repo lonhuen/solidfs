@@ -1,4 +1,5 @@
 #include "block/block_manager.h"
+#include "block/super_block.h"
 
 class FreeListBlockManager: BlockManager {
     public:

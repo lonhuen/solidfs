@@ -12,8 +12,8 @@ union super_block{
         
         BLOCK_ID s_dblock;
         BLOCK_ID nr_dblock;
-        
-        BLOCK_ID id_free_dblock;
+
+        BLOCK_ID h_dblock;
     };
     uint8_t data[BLOCK_SIZE];
 };

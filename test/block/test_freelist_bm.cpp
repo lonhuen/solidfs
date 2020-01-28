@@ -20,7 +20,7 @@ protected:
 
 public:
     static void SetUpTestCase() {
-        //LogUtils::log_level="3";
+        LogUtils::log_level="3";
         LogUtils::init("test");
         /* disk layout
          * 0 super_block
@@ -71,5 +71,36 @@ TEST_F(BlockTest,MkfsTest) {
             EXPECT_EQ(db.fl_entry[0],i+delta);
         else
             EXPECT_EQ(db.fl_entry[0],0);
+        for(int j=1;j<delta;j++){
+            if(i + j < nr_block)
+                EXPECT_EQ(db.fl_entry[j],i+j);
+            else
+                EXPECT_EQ(db.fl_entry[0],0);
+        }
     }
+}
+
+TEST_F(BlockTest,AllocateDBlockTest) {
+    Block db;
+    BLOCK_ID delta = BLOCK_SIZE/sizeof(BLOCK_ID);
+    for(BLOCK_ID i=0;i<delta-1;i++) {
+        EXPECT_EQ(i+s_dblock+1,fbm->allocate_dblock());
+    }
+    EXPECT_EQ(s_dblock,fbm->allocate_dblock());
+    
+    for(BLOCK_ID i=0;i<delta-1;i++) {
+        EXPECT_EQ(i+s_dblock+1+delta,fbm->allocate_dblock());
+    }
+    EXPECT_EQ(s_dblock+delta,fbm->allocate_dblock());
+
+    for(BLOCK_ID i=0;i<delta-1;i++) {
+        if(i+s_dblock+1+delta+delta > nr_block)
+            EXPECT_EQ(0,fbm->allocate_dblock());
+        else if(i+s_dblock+1+delta+delta == nr_block)
+            EXPECT_EQ(delta*2 + s_dblock,fbm->allocate_dblock());
+        else
+            EXPECT_EQ(i+s_dblock+1+delta+delta,fbm->allocate_dblock());
+    }
+    if(s_dblock+3*delta >= nr_block)
+        EXPECT_EQ(0,fbm->allocate_dblock());
 }

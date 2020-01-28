@@ -17,19 +17,23 @@ void FreeListBlockManager:: mkfs() {
     for(;i + NR_BLOCKS_PER_GROUP < sblock.nr_block;i += NR_BLOCKS_PER_GROUP) {
         *ptr = i + NR_BLOCKS_PER_GROUP;
         for(auto j=1;j<NR_BLOCKS_PER_GROUP;j++) {
-            *(ptr+j) = i + NR_BLOCKS_PER_GROUP + j; 
+            *(ptr+j) = i + j; 
         }
         p_storage->write_block(i,tmp.data);
     }
     
     *ptr = 0;
     for(auto j=1;j<NR_BLOCKS_PER_GROUP;j++) {
-        if (i + NR_BLOCKS_PER_GROUP + j < sblock.nr_block)
-            *(ptr+j) = i + NR_BLOCKS_PER_GROUP + j;
+        if (i + j < sblock.nr_block)
+            *(ptr+j) = i + j;
         else
             *(ptr+j) = 0;
     }
     p_storage->write_block(i,tmp.data);
+
+    // TODO(lonhh): whether this should be initialized by file system or block manager
+    sblock.h_dblock = sblock.s_dblock;
+    p_storage->write_block(0,sblock.data);
 }
 
 /**
@@ -64,8 +68,36 @@ int FreeListBlockManager::write_dblock(BLOCK_ID id, const uint8_t* src) {
 
 }
 
+/**
+ * @brief allocate a data block
+ * @return the block_id of the allocated block, 0 for failure
+*/
 int FreeListBlockManager::allocate_dblock() {
-
+    //let's assume that the h_dblock will be always the updated
+    BLOCK_ID head = sblock.h_dblock;
+    Block bl;
+    if (read_dblock(head,bl.data)) {
+        uint32_t i=1;
+        for(;i<NR_BLOCKS_PER_GROUP;i++) {
+            if(bl.fl_entry[i] != 0)
+                break;
+        }
+        if(i < NR_BLOCKS_PER_GROUP) {
+            BLOCK_ID ret = bl.fl_entry[i];
+            bl.fl_entry[i] = 0;
+            write_dblock(head,bl.data);
+            return ret;
+        } else {
+            BLOCK_ID new_head = bl.fl_entry[0];
+            bl.fl_entry[0] = 0;
+            write_dblock(head,bl.data);
+            sblock.h_dblock = new_head;
+            write_dblock(0,sblock.data);
+            return head;
+        }
+    }
+    LOG(ERROR) << "failed when allocating a data block";
+    return 0;
 }
 
 int FreeListBlockManager::free_dblock(BLOCK_ID id) {
