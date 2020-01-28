@@ -103,4 +103,60 @@ TEST_F(BlockTest,AllocateDBlockTest) {
     }
     if(s_dblock+3*delta >= nr_block)
         EXPECT_EQ(0,fbm->allocate_dblock());
+    super_block sb;
+    p_storage->read_block(0,sb.data);
+    EXPECT_EQ(0,sb.h_dblock);
+}
+
+// let's assume that no double free problems now
+TEST_F(BlockTest,FreeDBlockTest) {
+    BLOCK_ID delta = BLOCK_SIZE/sizeof(BLOCK_ID);
+
+    // free the first 512 data blocks
+    for(auto i=s_dblock;i<s_dblock+delta;i++) {
+        fbm->free_dblock(i);
+    }
+    super_block sb;
+    p_storage->read_block(0,sb.data);
+    EXPECT_EQ(s_dblock,sb.h_dblock);
+    Block b;
+    p_storage->read_block(s_dblock,b.data);
+    for(int i=1;i<delta;i++) {
+        EXPECT_EQ(i+s_dblock,b.fl_entry[i]);
+    }
+
+    // free the second 512 data blocks
+    for(auto i=s_dblock+delta;i<s_dblock + delta * 2;i++) {
+        fbm->free_dblock(i);
+    }
+    p_storage->read_block(0,sb.data);
+    EXPECT_EQ(s_dblock + delta,sb.h_dblock);
+    p_storage->read_block(s_dblock+delta,b.data);
+    for(int i=1;i<delta;i++) {
+        if(delta+i+s_dblock < nr_block)
+            EXPECT_EQ(delta+s_dblock+i,b.fl_entry[i]);
+        else
+            EXPECT_EQ(0,b.fl_entry[i]);
+    }
+
+    // free the third 512(not so many) data blocks
+    for(auto i=s_dblock + delta*2;i<nr_block;i++) {
+        fbm->free_dblock(i);
+    }
+    p_storage->read_block(0,sb.data);
+    EXPECT_EQ(s_dblock + delta*2,sb.h_dblock);
+    p_storage->read_block(s_dblock+delta*2,b.data);
+    for(int i=1;i<delta;i++) {
+        if(delta*2+i+s_dblock < nr_block)
+            EXPECT_EQ(delta*2+s_dblock+i,b.fl_entry[i]);
+        else
+            EXPECT_EQ(0,b.fl_entry[i]);
+    }
+}
+
+TEST_F(BlockTest,AllocateAfterFreeTest) {
+    for(auto i=0;i<nr_dblock;i++)
+        EXPECT_GE(fbm->allocate_dblock(),s_dblock);
+    for(auto i=0;i<nr_dblock;i++)
+        EXPECT_EQ(fbm->allocate_dblock(),0);
 }

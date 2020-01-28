@@ -92,7 +92,7 @@ int FreeListBlockManager::allocate_dblock() {
             bl.fl_entry[0] = 0;
             write_dblock(head,bl.data);
             sblock.h_dblock = new_head;
-            write_dblock(0,sblock.data);
+            p_storage->write_block(0,sblock.data);
             return head;
         }
     }
@@ -100,6 +100,39 @@ int FreeListBlockManager::allocate_dblock() {
     return 0;
 }
 
-int FreeListBlockManager::free_dblock(BLOCK_ID id) {
+/**
+ * @brief free a data block with block_id id, inserting to the head of the free list
+ * @return 1 for success, 0 for failure
+*/
 
+// TODO(lonhh): whether we need to make sure that id is in range?
+// TODO(lonhh): one performance issue----if we free one block, which needs to write the sblock,
+//              and then allocate a block and free it again.
+// TODO(lonhh): also do we need to check that the block is avaible or not? double free?
+int FreeListBlockManager::free_dblock(BLOCK_ID id) {
+    BLOCK_ID head = sblock.h_dblock;
+    Block bl;
+    uint32_t i=1;
+    if (read_dblock(head,bl.data)) {
+        for(;i<NR_BLOCKS_PER_GROUP;i++) {
+            if(bl.fl_entry[i] == 0)
+                break;
+        }
+    }
+    if(head!=0 && i < NR_BLOCKS_PER_GROUP) {
+        bl.fl_entry[i] = id;
+        write_dblock(head,bl.data);
+        return 1;
+    } else {
+        // write the block
+        Block tmp;
+        memset(tmp.fl_entry+1,0,BLOCK_SIZE);
+        tmp.fl_entry[0] = sblock.h_dblock;
+        write_dblock(id,tmp.data);
+        // modify the super block
+        sblock.h_dblock = id;
+        p_storage->write_block(0,sblock.data);
+        return 1;
+    }
+    return 0;
 }
