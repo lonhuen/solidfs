@@ -13,7 +13,7 @@ void FreeListBlockManager:: mkfs() {
 
     auto i = sblock.s_dblock;
     struct Block tmp;
-    BLOCK_ID* ptr = (BLOCK_ID*)tmp.data;
+    bid_t* ptr = (bid_t*)tmp.data;
     for(;i + NR_BLOCKS_PER_GROUP < sblock.nr_block;i += NR_BLOCKS_PER_GROUP) {
         *ptr = i + NR_BLOCKS_PER_GROUP;
         for(auto j=1;j<NR_BLOCKS_PER_GROUP;j++) {
@@ -42,7 +42,7 @@ void FreeListBlockManager:: mkfs() {
 */
 // TODO(lonhh) whether we need to do range check? 
 // TODO(lonhh) do we need to check that we are reading a valid block?
-int FreeListBlockManager::read_dblock(BLOCK_ID id, uint8_t* dst) {
+int FreeListBlockManager::read_dblock(bid_t id, uint8_t* dst) {
     if(!initialized) {
         LOG(ERROR) << "reading data block before mkfs";
         return 0;
@@ -55,7 +55,7 @@ int FreeListBlockManager::read_dblock(BLOCK_ID id, uint8_t* dst) {
 }
 
 // TODO(lonhh)
-int FreeListBlockManager::write_dblock(BLOCK_ID id, const uint8_t* src) {
+int FreeListBlockManager::write_dblock(bid_t id, const uint8_t* src) {
     if(!initialized) {
         LOG(ERROR) << "reading data block before mkfs";
         return 0;
@@ -70,11 +70,11 @@ int FreeListBlockManager::write_dblock(BLOCK_ID id, const uint8_t* src) {
 
 /**
  * @brief allocate a data block
- * @return the block_id of the allocated block, 0 for failure
+ * @return the bid_t of the allocated block, 0 for failure
 */
 int FreeListBlockManager::allocate_dblock() {
     //let's assume that the h_dblock will be always the updated
-    BLOCK_ID head = sblock.h_dblock;
+    bid_t head = sblock.h_dblock;
     Block bl;
     if (read_dblock(head,bl.data)) {
         uint32_t i=1;
@@ -83,12 +83,12 @@ int FreeListBlockManager::allocate_dblock() {
                 break;
         }
         if(i < NR_BLOCKS_PER_GROUP) {
-            BLOCK_ID ret = bl.fl_entry[i];
+            bid_t ret = bl.fl_entry[i];
             bl.fl_entry[i] = 0;
             write_dblock(head,bl.data);
             return ret;
         } else {
-            BLOCK_ID new_head = bl.fl_entry[0];
+            bid_t new_head = bl.fl_entry[0];
             bl.fl_entry[0] = 0;
             write_dblock(head,bl.data);
             sblock.h_dblock = new_head;
@@ -101,7 +101,7 @@ int FreeListBlockManager::allocate_dblock() {
 }
 
 /**
- * @brief free a data block with block_id id, inserting to the head of the free list
+ * @brief free a data block with bid_t id, inserting to the head of the free list
  * @return 1 for success, 0 for failure
 */
 
@@ -109,8 +109,8 @@ int FreeListBlockManager::allocate_dblock() {
 // TODO(lonhh): one performance issue----if we free one block, which needs to write the sblock,
 //              and then allocate a block and free it again.
 // TODO(lonhh): also do we need to check that the block is avaible or not? double free?
-int FreeListBlockManager::free_dblock(BLOCK_ID id) {
-    BLOCK_ID head = sblock.h_dblock;
+int FreeListBlockManager::free_dblock(bid_t id) {
+    bid_t head = sblock.h_dblock;
     Block bl;
     uint32_t i=1;
     if (read_dblock(head,bl.data)) {

@@ -12,11 +12,11 @@ class BlockTest : public testing::Test {
 protected:
     static Storage* p_storage;
     static FreeListBlockManager* fbm;
-    static BLOCK_ID nr_block;
-    static BLOCK_ID s_inode;
-    static BLOCK_ID nr_inode;
-    static BLOCK_ID s_dblock;
-    static BLOCK_ID nr_dblock;
+    static bid_t nr_block;
+    static bid_t s_inode;
+    static bid_t nr_inode;
+    static bid_t s_dblock;
+    static bid_t nr_dblock;
 
 public:
     static void SetUpTestCase() {
@@ -43,11 +43,11 @@ public:
     }
 };
 
-BLOCK_ID BlockTest:: nr_block = 1300;
-BLOCK_ID BlockTest:: s_inode = 1;
-BLOCK_ID BlockTest:: nr_inode = 9;
-BLOCK_ID BlockTest:: s_dblock = 10;
-BLOCK_ID BlockTest:: nr_dblock = 1290;
+bid_t BlockTest:: nr_block = 1300;
+bid_t BlockTest:: s_inode = 1;
+bid_t BlockTest:: nr_inode = 9;
+bid_t BlockTest:: s_dblock = 10;
+bid_t BlockTest:: nr_dblock = 1290;
 Storage* BlockTest:: p_storage = (Storage*)new MemoryStorage(nr_block);
 FreeListBlockManager* BlockTest:: fbm = new FreeListBlockManager(p_storage);
 
@@ -64,8 +64,8 @@ TEST_F(BlockTest,InitTest) {
 TEST_F(BlockTest,MkfsTest) {
     fbm->mkfs();
     Block db;
-    BLOCK_ID delta = BLOCK_SIZE/sizeof(BLOCK_ID);
-    for(BLOCK_ID i=s_dblock;i<=nr_dblock;i+=BLOCK_SIZE/sizeof(BLOCK_ID)){
+    bid_t delta = BLOCK_SIZE/sizeof(bid_t);
+    for(bid_t i=s_dblock;i<=nr_dblock;i+=BLOCK_SIZE/sizeof(bid_t)){
         p_storage->read_block(i,db.data);
         if(i + delta < nr_block)
             EXPECT_EQ(db.fl_entry[0],i+delta);
@@ -82,18 +82,18 @@ TEST_F(BlockTest,MkfsTest) {
 
 TEST_F(BlockTest,AllocateDBlockTest) {
     Block db;
-    BLOCK_ID delta = BLOCK_SIZE/sizeof(BLOCK_ID);
-    for(BLOCK_ID i=0;i<delta-1;i++) {
+    bid_t delta = BLOCK_SIZE/sizeof(bid_t);
+    for(bid_t i=0;i<delta-1;i++) {
         EXPECT_EQ(i+s_dblock+1,fbm->allocate_dblock());
     }
     EXPECT_EQ(s_dblock,fbm->allocate_dblock());
     
-    for(BLOCK_ID i=0;i<delta-1;i++) {
+    for(bid_t i=0;i<delta-1;i++) {
         EXPECT_EQ(i+s_dblock+1+delta,fbm->allocate_dblock());
     }
     EXPECT_EQ(s_dblock+delta,fbm->allocate_dblock());
 
-    for(BLOCK_ID i=0;i<delta-1;i++) {
+    for(bid_t i=0;i<delta-1;i++) {
         if(i+s_dblock+1+delta+delta > nr_block)
             EXPECT_EQ(0,fbm->allocate_dblock());
         else if(i+s_dblock+1+delta+delta == nr_block)
@@ -110,7 +110,7 @@ TEST_F(BlockTest,AllocateDBlockTest) {
 
 // let's assume that no double free problems now
 TEST_F(BlockTest,FreeDBlockTest) {
-    BLOCK_ID delta = BLOCK_SIZE/sizeof(BLOCK_ID);
+    bid_t delta = BLOCK_SIZE/sizeof(bid_t);
 
     // free the first 512 data blocks
     for(auto i=s_dblock;i<s_dblock+delta;i++) {

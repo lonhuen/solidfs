@@ -5,18 +5,18 @@
 class MemoryStorage : Storage {
     
     private:
-        const BLOCK_ID NR_BLOCKS;
+        const bid_t NR_BLOCKS;
         uint8_t* data;
 
     public:
-        MemoryStorage(BLOCK_ID nr_blocks);
+        MemoryStorage(bid_t nr_blocks);
         ~MemoryStorage();
-        int read_block(BLOCK_ID id, uint8_t* dst);
-        int write_block(BLOCK_ID id, const uint8_t* src);
+        int read_block(bid_t id, uint8_t* dst);
+        int write_block(bid_t id, const uint8_t* src);
 #ifdef DEBUG
         typedef void (*DumpF)(const uint8_t*); 
-        void dump_block(BLOCK_ID id, DumpF f=nullptr);
-        void dump_range(BLOCK_ID sid, BLOCK_ID eid,DumpF f=nullptr);
+        void dump_block(bid_t id, DumpF f=nullptr);
+        void dump_range(bid_t sid, bid_t eid,DumpF f=nullptr);
 #endif
 
 };

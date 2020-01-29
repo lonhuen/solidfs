@@ -5,15 +5,15 @@ union super_block{
     struct {
         uint32_t magic_number;
 
-        BLOCK_ID nr_block;
+        bid_t nr_block;
         
-        BLOCK_ID s_inode;
-        BLOCK_ID nr_inode;
+        bid_t s_inode;
+        bid_t nr_inode;
         
-        BLOCK_ID s_dblock;
-        BLOCK_ID nr_dblock;
+        bid_t s_dblock;
+        bid_t nr_dblock;
 
-        BLOCK_ID h_dblock;
+        bid_t h_dblock;
     };
     uint8_t data[BLOCK_SIZE];
 };

@@ -3,7 +3,7 @@
 #include <cstring>
 #include <iostream>
 
-MemoryStorage::MemoryStorage(BLOCK_ID nr_blocks) : NR_BLOCKS(nr_blocks) {
+MemoryStorage::MemoryStorage(bid_t nr_blocks) : NR_BLOCKS(nr_blocks) {
     data = new uint8_t[NR_BLOCKS * BLOCK_SIZE];
 }
 
@@ -15,7 +15,7 @@ MemoryStorage::~MemoryStorage() {
  * @brief read Block id to dst
  * @return 1 for sucess, 0 for fail
  */
-int MemoryStorage::read_block(BLOCK_ID id, uint8_t* dst) {
+int MemoryStorage::read_block(bid_t id, uint8_t* dst) {
     if(id >= BLOCK_SIZE){
         LOG(ERROR) << "Reading Block " << id << " out of Range " << NR_BLOCKS;
         return 0;
@@ -29,7 +29,7 @@ int MemoryStorage::read_block(BLOCK_ID id, uint8_t* dst) {
  * @brief write src to Block id
  * @return 1 for sucess, 0 for fail
  */
-int MemoryStorage::write_block(BLOCK_ID id, const uint8_t* src) {
+int MemoryStorage::write_block(bid_t id, const uint8_t* src) {
     if(id >= BLOCK_SIZE){
         LOG(ERROR) << "Writing Block " << id << " out of Range " << NR_BLOCKS;
         return 0;
@@ -40,7 +40,7 @@ int MemoryStorage::write_block(BLOCK_ID id, const uint8_t* src) {
 }
 
 #ifdef DEBUG
-void MemoryStorage::dump_block(BLOCK_ID id,DumpF f) {
+void MemoryStorage::dump_block(bid_t id,DumpF f) {
     if(id >= NR_BLOCKS) {
         LOG(ERROR) << "Dumping Block " << id << " out of Range.";
         return;
@@ -56,7 +56,7 @@ void MemoryStorage::dump_block(BLOCK_ID id,DumpF f) {
     }
 }
 
-void MemoryStorage::dump_range(BLOCK_ID sid, BLOCK_ID eid,DumpF f) {
+void MemoryStorage::dump_range(bid_t sid, bid_t eid,DumpF f) {
     for(auto i=0;i<eid && i<NR_BLOCKS;i++)
         dump_block(i,f);
 }

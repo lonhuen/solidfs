@@ -3,8 +3,8 @@
 
 class INodeManager {
  private:
-  BLOCK_ID inode_lst_start;
-  BLOCK_ID inode_lst_end;
+  bid_t inode_lst_start;
+  bid_t inode_lst_end;
 
  public:
   virtual void mkfs();
