@@ -65,7 +65,7 @@ TEST_F(BlockTest,MkfsTest) {
     fbm->mkfs();
     Block db;
     bid_t delta = BLOCK_SIZE/sizeof(bid_t);
-    for(bid_t i=s_dblock;i<=nr_dblock;i+=BLOCK_SIZE/sizeof(bid_t)){
+    for(bid_t i=s_dblock;i<=nr_dblock+s_dblock;i+=BLOCK_SIZE/sizeof(bid_t)){
         p_storage->read_block(i,db.data);
         if(i + delta < nr_block)
             EXPECT_EQ(db.fl_entry[0],i+delta);

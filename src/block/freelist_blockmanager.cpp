@@ -47,7 +47,7 @@ int FreeListBlockManager::read_dblock(bid_t id, uint8_t* dst) {
         LOG(ERROR) << "reading data block before mkfs";
         return 0;
     }
-    if(id < sblock.s_dblock || id > sblock.nr_block) {
+    if(id < sblock.s_dblock || id > sblock.nr_block + sblock.s_dblock) {
         LOG(ERROR) << "reading out of range in read_dblock";
         return 0;
     }
@@ -60,7 +60,7 @@ int FreeListBlockManager::write_dblock(bid_t id, const uint8_t* src) {
         LOG(ERROR) << "reading data block before mkfs";
         return 0;
     }
-    if(id < sblock.s_dblock || id > sblock.nr_block) {
+    if(id < sblock.s_dblock || id > sblock.nr_block + sblock.s_dblock) {
         LOG(ERROR) << "reading out of range in read_dblock";
         return 0;
     }
