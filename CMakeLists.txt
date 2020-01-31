@@ -38,6 +38,6 @@ add_library(Core STATIC ${SourceFiles})
 if (${ENABLE_TEST})
 file(GLOB_RECURSE TestFiles test/*.cpp)
 add_executable(CoreTests ${TestFiles})
-target_link_libraries(CoreTests Core ${ExtTestLibs})
+target_link_libraries(CoreTests Core ${ExtTestLibs} pthread)
 
 endif ()
