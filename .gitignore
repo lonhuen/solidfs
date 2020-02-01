@@ -56,3 +56,4 @@ dkms.conf
 .VSCodeCounter/*
 .DS_Store
 build/
+*~
