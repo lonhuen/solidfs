@@ -16,3 +16,11 @@ int Directory::remove_entry(const std::string& s) {
 int Directory::contains_entry(const std::string& s) const {
     return this->entry_m.find(s) != this->entry_m.end();
 }
+
+int serialize(uint8_t* byte_stream) {
+
+}
+
+int deserialize(const uint8_t* byte_stream) {
+
+}
