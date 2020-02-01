@@ -16,7 +16,8 @@ class Directory {
     int insert_entry(const std::string& s,iid_t id);
     int remove_entry(const std::string& s);
     int contain_entry(const std::string& s) const;
+    iid_t get_entry(const std::string& s) const;
 
-    int serialize(uint8_t* byte_stream);
-    int deserialize(const uint8_t* byte_stream);
+    int serialize(uint8_t* byte_stream, uint32_t size);
+    int deserialize(const uint8_t* byte_stream, uint32_t size);
 };
