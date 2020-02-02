@@ -14,8 +14,8 @@ int Directory::insert_entry(const std::string& s,iid_t id) {
     return 1;
 }
 int Directory::remove_entry(const std::string& s) {
-    if(contain_entry(s)) {
-        LOG(INFO) << "trying to remove a non-exist entry " << s; 
+    if(!contain_entry(s)) {
+        LOG(ERROR) << "trying to remove a non-exist entry " << s; 
         return 0;
     }
     // TODO(lonhh) sanity check
@@ -24,15 +24,21 @@ int Directory::remove_entry(const std::string& s) {
 
 }
 int Directory::contain_entry(const std::string& s) const {
-    return this->entry_m.find(s) != this->entry_m.end();
+    if(this->entry_m.find(s) != this->entry_m.end()) {
+        return 1;
+    }
+    return 0;
 }
 
-iid_t Directory::get_entry(const std::string& s) const {
+int Directory::get_entry(const std::string& s,iid_t* ret) const {
     auto p = this->entry_m.find(s);
     if(p == this->entry_m.end()){
+        LOG(WARNING) << "no such a entry for " << s;
+        //TODO(lonhh): what to return if there is no such an entry?
         return 0;
     }
-    return p->second;
+    *ret = p->second;
+    return 1;
 }
 
 /**
@@ -48,7 +54,7 @@ int Directory::serialize(uint8_t* byte_stream, uint32_t size) {
             memcpy(byte_stream+s,&(p->second),sizeof(iid_t));
             s += sizeof(iid_t);
         } else {
-            LOG(ERROR) << "Not enough space for serializing Directory";
+            LOG(WARNING) << "Not enough space for serializing Directory";
             return 0;
         }
     }

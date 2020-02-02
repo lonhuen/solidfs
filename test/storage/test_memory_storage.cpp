@@ -5,9 +5,6 @@
 
 
 GTEST_TEST(StorageTest,WriteRead) {
-    //LogUtils::log_level="3";
-    LogUtils::init("test");
-
     bid_t nr_blocks = 10;
     MemoryStorage* ms = new MemoryStorage(nr_blocks);
     uint8_t buffer[BLOCK_SIZE];

@@ -17,7 +17,7 @@ MemoryStorage::~MemoryStorage() {
  */
 int MemoryStorage::read_block(bid_t id, uint8_t* dst) {
     if(id >= BLOCK_SIZE){
-        LOG(ERROR) << "Reading Block " << id << " out of Range " << NR_BLOCKS;
+        LOG(WARNING) << "Reading Block " << id << " out of Range " << NR_BLOCKS;
         return 0;
     }
     memcpy(dst,data + id*BLOCK_SIZE,BLOCK_SIZE);
@@ -31,7 +31,7 @@ int MemoryStorage::read_block(bid_t id, uint8_t* dst) {
  */
 int MemoryStorage::write_block(bid_t id, const uint8_t* src) {
     if(id >= BLOCK_SIZE){
-        LOG(ERROR) << "Writing Block " << id << " out of Range " << NR_BLOCKS;
+        LOG(WARNING) << "Writing Block " << id << " out of Range " << NR_BLOCKS;
         return 0;
     }
     memcpy(data + id*BLOCK_SIZE, src, BLOCK_SIZE);
@@ -42,7 +42,7 @@ int MemoryStorage::write_block(bid_t id, const uint8_t* src) {
 #ifdef DEBUG
 void MemoryStorage::dump_block(bid_t id,DumpF f) {
     if(id >= NR_BLOCKS) {
-        LOG(ERROR) << "Dumping Block " << id << " out of Range.";
+        LOG(WARNING) << "Dumping Block " << id << " out of Range.";
         return;
     }
     if(f) {

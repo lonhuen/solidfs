@@ -44,11 +44,11 @@ void FreeListBlockManager:: mkfs() {
 // TODO(lonhh) do we need to check that we are reading a valid block?
 int FreeListBlockManager::read_dblock(bid_t id, uint8_t* dst) {
     if(!initialized) {
-        LOG(ERROR) << "reading data block before mkfs";
+        LOG(WARNING) << "reading data block before mkfs";
         return 0;
     }
     if(id < sblock.s_dblock || id > sblock.nr_block + sblock.s_dblock) {
-        LOG(ERROR) << "reading out of range in read_dblock";
+        LOG(WARNING) << "reading out of range in read_dblock";
         return 0;
     }
     return p_storage->read_block(id, dst);
@@ -57,11 +57,11 @@ int FreeListBlockManager::read_dblock(bid_t id, uint8_t* dst) {
 // TODO(lonhh)
 int FreeListBlockManager::write_dblock(bid_t id, const uint8_t* src) {
     if(!initialized) {
-        LOG(ERROR) << "reading data block before mkfs";
+        LOG(WARNING) << "reading data block before mkfs";
         return 0;
     }
     if(id < sblock.s_dblock || id > sblock.nr_block + sblock.s_dblock) {
-        LOG(ERROR) << "reading out of range in read_dblock";
+        LOG(WARNING) << "reading out of range in read_dblock";
         return 0;
     }
     return p_storage->write_block(id, src);
@@ -96,7 +96,7 @@ int FreeListBlockManager::allocate_dblock() {
             return head;
         }
     }
-    LOG(ERROR) << "failed when allocating a data block";
+    LOG(WARNING) << "failed when allocating a data block";
     return 0;
 }
 

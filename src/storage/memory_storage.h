@@ -2,7 +2,7 @@
 #include "storage/storage.h"
 #include "common.h"
 
-class MemoryStorage : Storage {
+class MemoryStorage : public Storage {
     
     private:
         const bid_t NR_BLOCKS;

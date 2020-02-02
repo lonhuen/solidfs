@@ -8,8 +8,8 @@ union super_block{
         bid_t nr_block;
 
         // all in terms of block 
-        bid_t s_inode;
-        bid_t nr_inode;
+        bid_t s_iblock;
+        bid_t nr_iblock;
         
         // all in terms of block 
         bid_t s_dblock;

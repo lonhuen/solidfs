@@ -1,7 +1,7 @@
 #include "block/block_manager.h"
 #include "block/super_block.h"
 
-class FreeListBlockManager: BlockManager {
+class FreeListBlockManager: public BlockManager {
     public:
         FreeListBlockManager(Storage* p_storage) : BlockManager(p_storage) {};
 

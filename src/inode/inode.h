@@ -4,7 +4,7 @@
 #define DATA_PTR_COUNT 13
 
 enum inode_type {
-  FREE,ALLOCATED 
+  FREE,DIRECTORY
 };
 
 union INode{

@@ -13,14 +13,13 @@ protected:
     static Storage* p_storage;
     static FreeListBlockManager* fbm;
     static bid_t nr_block;
-    static bid_t s_inode;
-    static bid_t nr_inode;
+    static bid_t s_iblock;
+    static bid_t nr_iblock;
     static bid_t s_dblock;
     static bid_t nr_dblock;
 
 public:
     static void SetUpTestCase() {
-        LogUtils::log_level="3";
         LogUtils::init("test");
         /* disk layout
          * 0 super_block
@@ -29,8 +28,8 @@ public:
          */
         super_block sblock;
         sblock.nr_block = nr_block;
-        sblock.s_inode = s_inode;
-        sblock.nr_inode = nr_inode;
+        sblock.s_iblock = s_iblock;
+        sblock.nr_iblock = nr_iblock;
         sblock.s_dblock = s_dblock;
         sblock.nr_dblock= nr_dblock;
 
@@ -44,8 +43,8 @@ public:
 };
 
 bid_t BlockTest:: nr_block = 1300;
-bid_t BlockTest:: s_inode = 1;
-bid_t BlockTest:: nr_inode = 9;
+bid_t BlockTest:: s_iblock = 1;
+bid_t BlockTest:: nr_iblock = 9;
 bid_t BlockTest:: s_dblock = 10;
 bid_t BlockTest:: nr_dblock = 1290;
 Storage* BlockTest:: p_storage = (Storage*)new MemoryStorage(nr_block);
@@ -55,8 +54,8 @@ TEST_F(BlockTest,InitTest) {
     super_block sb;
     p_storage->read_block(0,sb.data);
     EXPECT_EQ(sb.nr_block , nr_block);
-    EXPECT_EQ(sb.s_inode, s_inode);
-    EXPECT_EQ(sb.nr_inode, nr_inode);
+    EXPECT_EQ(sb.s_iblock, s_iblock);
+    EXPECT_EQ(sb.nr_iblock, nr_iblock);
     EXPECT_EQ(sb.s_dblock, s_dblock);
     EXPECT_EQ(sb.nr_dblock, nr_dblock);
 }

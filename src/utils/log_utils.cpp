@@ -1,7 +1,7 @@
 #include "utils/log_utils.h"
 
 std::string LogUtils::log_dir = "";
-std::string LogUtils::log_level = "0";
+std::string LogUtils::log_level = "2";
 std::string LogUtils::log_buf_level = "3";
 bool LogUtils::log_to_stderr = true;
 
