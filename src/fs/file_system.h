@@ -4,6 +4,7 @@
 #include "utils/log_utils.h"
 #include "inode/inode_manager.h"
 #include "block/block_manager.h"
+#include "directory/directory.h"
 #include <string>
 
 class FileSystem {
@@ -11,9 +12,13 @@ class FileSystem {
     BlockManager* bm;
     Storage* storage;
 
+public:
+    // just used for DEBUG
+    FileSystem() {};
     FileSystem(bid_t nr_blocks,bid_t nr_iblock_blocks);
     void mkfs();
     iid_t path2iid(const std::string& path);
+    Directory read_directory(iid_t id);
 };
 
 

@@ -13,6 +13,7 @@ class Directory {
 
     public:
     Directory(iid_t id, iid_t parent);
+    Directory(iid_t id,const uint8_t* byte_stream, uint32_t size);
     int insert_entry(const std::string& s,iid_t id);
     int remove_entry(const std::string& s);
     int contain_entry(const std::string& s) const;

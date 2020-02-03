@@ -4,6 +4,9 @@
 
 Directory::Directory(iid_t id, iid_t parent): entry_m({{".",id},{"..",parent}}),id(id) {
 }
+Directory::Directory(iid_t id,const uint8_t* byte_stream, uint32_t size): id(id) {
+    deserialize(byte_stream,size);
+}
 int Directory::insert_entry(const std::string& s,iid_t id) {
     // TODO(lonhh) sanity check
     if(contain_entry(s)) {
@@ -63,6 +66,8 @@ int Directory::serialize(uint8_t* byte_stream, uint32_t size) {
 }
 
 int Directory::deserialize(const uint8_t* byte_stream, uint32_t size) {
+    // TODO(lonhh): whether we need to clear the entries?
+    // entry_m.clear();
     uint32_t i = 0;
     while(i < size) {
         if(byte_stream[i] == '\0')
