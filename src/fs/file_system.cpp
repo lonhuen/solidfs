@@ -79,7 +79,7 @@ int FileSystem::read(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset) {
     }
     uint32_t s_index = IDIV_BLOCK_SIZE(offset);
     uint32_t e_index = nr_blocks + s_index;
-    std::vector<bid_t> blockid_arrays = read_dblock_indexs(inode,s_index,e_index);
+    std::vector<bid_t> blockid_arrays = read_dblock_index(inode,s_index,e_index);
 
     // the total number of bytes
     uint32_t s = 0;
