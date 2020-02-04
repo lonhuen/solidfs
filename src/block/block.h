@@ -7,7 +7,12 @@ struct Block{
     union {
         uint8_t data[BLOCK_SIZE];
         struct{
+            // used for freelist
             bid_t fl_entry[BLOCK_SIZE/sizeof(bid_t)];
+        };
+        struct{
+            // used for indexing data blocks by inode
+            bid_t bl_entry[BLOCK_SIZE/sizeof(bid_t)];
         };
         union INode inode[BLOCK_SIZE/sizeof(INode)];
     };

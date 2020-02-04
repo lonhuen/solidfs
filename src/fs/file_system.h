@@ -1,11 +1,12 @@
 #pragma once
 
+#include <string>
+#include <vector>
 #include "common.h"
 #include "utils/log_utils.h"
 #include "inode/inode_manager.h"
 #include "block/block_manager.h"
 #include "directory/directory.h"
-#include <string>
 
 class FileSystem {
     INodeManager* im;
@@ -19,6 +20,10 @@ public:
     void mkfs();
     iid_t path2iid(const std::string& path);
     Directory read_directory(iid_t id);
+    int read(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset);
+
+private:
+    std::vector<bid_t> read_dblock_indexs(INode& inode,uint32_t begin,uint32_t end);
 };
 
 
