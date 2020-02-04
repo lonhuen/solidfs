@@ -18,12 +18,13 @@ public:
     FileSystem() {};
     FileSystem(bid_t nr_blocks,bid_t nr_iblock_blocks);
     void mkfs();
-    iid_t path2iid(const std::string& path);
+    int path2iid(const std::string& path,iid_t* id);
     Directory read_directory(iid_t id);
     int read(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset);
 
 private:
     std::vector<bid_t> read_dblock_index(INode& inode,uint32_t begin,uint32_t end);
+    uint32_t block_lookup_per_region(INode& inode,uint32_t begin,uint32_t end,std::vector<bid_t>& vec,int depth);
 };
 
 
