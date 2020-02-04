@@ -95,8 +95,8 @@ int FileSystem::read(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset) {
 
         //update the s_addr and nr_bytes
         s = s + nr_bytes;
-        uint32_t s_addr = MOD_BLOCK_SIZE(offset + s);
-        uint32_t nr_bytes = std::min(BLOCK_SIZE - s_addr, size - s);
+        s_addr = MOD_BLOCK_SIZE(offset + s);
+        nr_bytes = std::min(BLOCK_SIZE - s_addr, size - s);
     }
     return s;
 }
@@ -115,11 +115,12 @@ std::vector<bid_t> FileSystem::read_dblock_index(INode& inode,uint32_t begin,uin
             p += block_lookup_per_region(inode,p,end,ret,0);
         // indrect (one-level)
         } else if (p < 10 + factor) {
-            p += block_lookup_per_region(inode,p - 10,end,ret,1);
+            p += block_lookup_per_region(inode,p - 10,end - 10,ret,1);
         } else if (p < 10 + factor + factor * factor) {
-            p += block_lookup_per_region(inode,p - 10 - factor,end,ret,2);
+            p += block_lookup_per_region(inode,p - 10 - factor,end - 10 - factor,ret,2);
         } else if (p < 10 + factor + factor * factor + factor * factor * factor){
-            p += block_lookup_per_region(inode,p - 10 - factor - factor * factor,end,ret,3);
+            p += block_lookup_per_region(inode,p - 10 - factor - factor * factor,
+                                            end - 10 - factor - factor*factor,ret,3);
         } else {
             LOG(ERROR) << "Trying to access maxmium file size";
         }
@@ -134,6 +135,7 @@ uint32_t FileSystem::block_lookup_per_region(INode& inode,uint32_t begin,uint32_
         return 0;
     }
 
+    const bid_t factor = BLOCK_SIZE/sizeof(bid_t);
     int ret = 0;
     // direct look up
     // [begin, end) is subset of [0,10)
@@ -141,56 +143,56 @@ uint32_t FileSystem::block_lookup_per_region(INode& inode,uint32_t begin,uint32_
         for(uint32_t i=begin; begin < end && i < 10;i++, begin++) {
             vec.push_back(inode.p_block[i]);
             ret++;
-            LOG(ERROR) << "reading " << i << " @depth=0"
+            LOG(INFO) << "reading " << i << " @depth=0 " << inode.p_block[i];
         }
     // note here [begin, end) in [0,512)
     } else if (depth == 1) {
         Block bl;
         bm->read_dblock(inode.p_block[10],bl.data);
-        for(uint32_t i=begin; begin < end && i<512;i++, begin++){
+        for(uint32_t i=begin; begin < end && i< factor ;i++, begin++){
             vec.push_back(bl.bl_entry[i]);
             ret++;
-            LOG(ERROR) << "reading " << i << " @depth=1"
+            LOG(INFO) << "reading " << i << " @depth=1";
         }
     // note here [begin, end) in [0,512 * 512)
     } else if (depth == 2) {
         Block bl_1;
         bm->read_dblock(inode.p_block[11],bl_1.data);
-        auto si = begin / BLOCK_SIZE;
-        for(uint32_t i=si; i < BLOCK_SIZE && begin < end;i++){
+        auto si = begin / factor;
+        for(uint32_t i=si; i < factor && begin < end;i++){
             Block bl_2;
             bm->read_dblock(bl_1.bl_entry[i],bl_2.data);
             
-            auto sj = begin % BLOCK_SIZE;
-            for(uint32_t j=sj; j < BLOCK_SIZE && begin < end;j++, begin++){
+            auto sj = begin % factor;
+            for(uint32_t j=sj; j < factor && begin < end;j++, begin++){
                 vec.push_back(bl_2.bl_entry[j]);
                 ret++;
-                LOG(ERROR) << "reading " << i << " " << j << " @depth=2"
+                LOG(INFO) << "reading " << i << " " << j << " @depth=2";
             }
         }
     // note here [begin, end) in [0,512 * 512)
     } else {
         Block bl_1;
         bm->read_dblock(inode.p_block[12],bl_1.data);
-        auto si = begin / BLOCK_SIZE / BLOCK_SIZE;
-        for(uint32_t i=si; i < BLOCK_SIZE && begin < end;i++){
+        auto si = begin / factor / factor;
+        for(uint32_t i=si; i < factor && begin < end;i++){
             Block bl_2;
             bm->read_dblock(bl_1.bl_entry[i],bl_2.data);
             
-            auto sj = (begin / BLOCK_SIZE) % BLOCK_SIZE;
-            for(uint32_t j=sj; j < BLOCK_SIZE && begin < end;j++){
+            auto sj = (begin / factor ) % factor;
+            for(uint32_t j=sj; j < factor && begin < end;j++){
                 Block bl_3;
                 bm->read_dblock(bl_2.bl_entry[j],bl_3.data);
             
             
-                auto sk = begin % BLOCK_SIZE;
-                for(uint32_t k=sk; k < BLOCK_SIZE && begin < end;k++,begin++){
+                auto sk = begin % factor ;
+                for(uint32_t k=sk; k < factor && begin < end;k++,begin++){
                     vec.push_back(bl_3.bl_entry[k]);
                     ret++;
-                    LOG(ERROR) << "reading " << i << " " << j << " " << k << " @depth=2"
+                    LOG(INFO) << "reading " << i << " " << j << " " << k << " @depth=3";
                 }
             }
         }
     }
-    return 1;
+    return ret;
 }

@@ -9,6 +9,8 @@
 #include "directory/directory.h"
 
 class FileSystem {
+  //TODO(lonhh): just for debug
+public:
     INodeManager* im;
     BlockManager* bm;
     Storage* storage;
@@ -22,7 +24,7 @@ public:
     Directory read_directory(iid_t id);
     int read(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset);
 
-private:
+//private:
     std::vector<bid_t> read_dblock_index(INode& inode,uint32_t begin,uint32_t end);
     uint32_t block_lookup_per_region(INode& inode,uint32_t begin,uint32_t end,std::vector<bid_t>& vec,int depth);
 };
