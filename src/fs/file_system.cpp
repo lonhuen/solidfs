@@ -100,7 +100,7 @@ int FileSystem::read(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset) {
 }
 
 // read [begin,end) entries
-std::vector<bid_t> FileSystem::read_dblock_indexs(INode& inode,uint32_t begin,uint32_t end) {
+std::vector<bid_t> FileSystem::read_dblock_index(INode& inode,uint32_t begin,uint32_t end) {
     std::vector<bid_t> ret;
     ret.reserve(end - begin);
 

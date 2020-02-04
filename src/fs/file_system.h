@@ -23,7 +23,7 @@ public:
     int read(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset);
 
 private:
-    std::vector<bid_t> read_dblock_indexs(INode& inode,uint32_t begin,uint32_t end);
+    std::vector<bid_t> read_dblock_index(INode& inode,uint32_t begin,uint32_t end);
 };
 
 
