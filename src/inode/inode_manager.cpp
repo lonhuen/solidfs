@@ -27,6 +27,8 @@ void INodeManager:: mkfs() {
     Block bl;
     p_storage->read_block(s_iblock,bl.data);
     bl.inode[0].itype = inode_type::DIRECTORY;
+    bl.inode[0].size = 0;
+    bl.inode[0].block = 0;
     for(auto j=1;j<nr_iblock_PER_BLOCK;j++) {
         bl.inode[j].itype = inode_type::FREE;
     }

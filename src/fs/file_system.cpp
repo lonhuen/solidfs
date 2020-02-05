@@ -115,7 +115,7 @@ int FileSystem::write(iid_t id,const uint8_t* src,uint32_t size,uint32_t offset)
     im->read_inode(id,inode.data);
     std::vector<bid_t> allocated_blocks;
     if(offset + size > inode.block * BLOCK_SIZE) {
-        uint32_t nr_allocate_blocks = IDIV_BLOCK_SIZE(offset+size);
+        uint32_t nr_allocate_blocks = IDIV_BLOCK_SIZE(offset+size) - inode.block;
         allocated_blocks.reserve(nr_allocate_blocks);
         for(auto i=0;i<nr_allocate_blocks;i++){
             allocated_blocks.push_back(new_dblock(inode));
@@ -136,7 +136,6 @@ int FileSystem::write(iid_t id,const uint8_t* src,uint32_t size,uint32_t offset)
         });
         return 0;
     }
-
 
     // just get all the previous allocated blocks (before write function)
 
@@ -169,6 +168,8 @@ int FileSystem::write(iid_t id,const uint8_t* src,uint32_t size,uint32_t offset)
         s_addr = MOD_BLOCK_SIZE(offset + s);
         nr_bytes = std::min(BLOCK_SIZE - s_addr, size - s);
     }
+    inode.size = std::max(inode.size,(uint64_t)offset+size);
+    im->write_inode(id,inode.data);
     return s;
 }
 

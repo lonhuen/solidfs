@@ -14,16 +14,26 @@ protected:
   static FileSystem* fs;
 
 };
-
-FileSystem* FileSystemTest::fs = new FileSystem(10 + 512 + 512 * 512 ,9);
+// this config for write test passed!:w
+//FileSystem* FileSystemTest::fs = new FileSystem(10 + 512 + 512 * 512 + 512 * 512 ,9);
+FileSystem* FileSystemTest::fs = new FileSystem(10 + 512 + 512 * 512,9);
 TEST_F(FileSystemTest,InitTest) {
   super_block sb;
   fs->storage->read_block(0,sb.data);
-  EXPECT_EQ(sb.nr_block, 10+512+512*512);
+//  EXPECT_EQ(sb.nr_block, 10+512+512*512 + 512*512);
+//  EXPECT_EQ(sb.nr_dblock, 10+512+512*512 +512 * 512- 10);
+  EXPECT_EQ(sb.nr_block, 10+512+512*512  );
   EXPECT_EQ(sb.nr_dblock, 10+512+512*512 - 10);
   EXPECT_EQ(sb.s_dblock, 10);
   EXPECT_EQ(sb.s_iblock, 1);
   EXPECT_EQ(sb.nr_iblock, 9);
+
+  fs->mkfs();
+  INode inode;
+  fs->im->read_inode(0,inode.data);
+  EXPECT_EQ(inode.size, 0);
+  EXPECT_EQ(inode.block, 0);
+  fs->im->write_inode(0,inode.data);
 }
 
 /*
@@ -171,6 +181,7 @@ TEST_F(FileSystemTest,ReadTest) {
 }
 */
 
+/*
 TEST_F(FileSystemTest,NewDBlockTest) {
     // fs->mkfs();
     // auto nr = 10 + 512 + 512 * 7;
@@ -206,4 +217,36 @@ TEST_F(FileSystemTest,NewDBlockTest) {
         }
         EXPECT_EQ(allocated_block_array[i],v[i]);
     }
+}
+*/
+
+TEST_F(FileSystemTest,WriteTest) {
+    fs->mkfs();
+    std::vector<uint64_t> test_len_array;
+
+    test_len_array.push_back(1);
+    test_len_array.push_back(9);
+    test_len_array.push_back(30);
+    test_len_array.push_back(10 + 512);
+    test_len_array.push_back(30 + 512);
+    //test_len_array.push_back(10 + 512 + 512 * 512);
+
+    std::for_each(test_len_array.begin(),test_len_array.end(),[](auto p){
+        auto len = p * BLOCK_SIZE;
+        uint8_t* src = new uint8_t[len];
+        uint8_t* dst = new uint8_t[len];
+        
+        fs->write(0,src,len,0);
+        fs->read(0,dst,len,0);
+
+        for(auto i=0;i<len;i++) {
+            EXPECT_EQ(src[i],dst[i]);
+        }
+        delete []src;
+        delete []dst;
+        INode inode;
+        fs->im->read_inode(0,inode.data);
+        std::cout << inode.size << std::endl;
+        std::cout << inode.block << std::endl;
+    });
 }
