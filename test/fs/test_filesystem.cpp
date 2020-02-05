@@ -172,15 +172,14 @@ TEST_F(FileSystemTest,ReadTest) {
 */
 
 TEST_F(FileSystemTest,NewDBlockTest) {
-    fs->mkfs();
-    auto nr = 10 + 512 + 512 * 7;
-    for(auto i=0;i<nr;i++) {
-        auto ret = fs->bm->allocate_dblock();
-        EXPECT_GT(ret,0);
-        if(!ret)
-            std::cout << i << std::endl;
-    }
-    /*
+    // fs->mkfs();
+    // auto nr = 10 + 512 + 512 * 7;
+    // for(auto i=0;i<nr;i++) {
+    //     auto ret = fs->bm->allocate_dblock();
+    //     EXPECT_GT(ret,0);
+    //     if(!ret)
+    //         std::cout << i << std::endl;
+    // }
     // let's write the first 20 blocks
     fs->mkfs();
     INode inode;
@@ -207,5 +206,4 @@ TEST_F(FileSystemTest,NewDBlockTest) {
         }
         EXPECT_EQ(allocated_block_array[i],v[i]);
     }
-    */
 }

@@ -21,7 +21,6 @@ void FreeListBlockManager:: mkfs() {
         }
         p_storage->write_block(i,tmp.data);
     }
-    
     *ptr = 0;
     for(auto j=1;j<NR_BLOCKS_PER_GROUP;j++) {
         if (i + j < sblock.nr_block)
@@ -47,7 +46,7 @@ int FreeListBlockManager::read_dblock(bid_t id, uint8_t* dst) {
         LOG(WARNING) << "reading data block before mkfs";
         return 0;
     }
-    if(id < sblock.s_dblock || id > sblock.nr_block + sblock.s_dblock) {
+    if(id < sblock.s_dblock || id > sblock.nr_block) {
         LOG(WARNING) << "reading out of range in read_dblock";
         return 0;
     }
@@ -60,7 +59,7 @@ int FreeListBlockManager::write_dblock(bid_t id, const uint8_t* src) {
         LOG(WARNING) << "reading data block before mkfs";
         return 0;
     }
-    if(id < sblock.s_dblock || id > sblock.nr_block + sblock.s_dblock) {
+    if(id < sblock.s_dblock || id > sblock.nr_block) {
         LOG(WARNING) << "reading out of range in read_dblock";
         return 0;
     }

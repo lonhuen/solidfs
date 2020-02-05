@@ -16,7 +16,7 @@ MemoryStorage::~MemoryStorage() {
  * @return 1 for sucess, 0 for fail
  */
 int MemoryStorage::read_block(bid_t id, uint8_t* dst) {
-    if(id >= BLOCK_SIZE){
+    if(id >= NR_BLOCKS){
         LOG(WARNING) << "Reading Block " << id << " out of Range " << NR_BLOCKS;
         return 0;
     }
@@ -30,7 +30,7 @@ int MemoryStorage::read_block(bid_t id, uint8_t* dst) {
  * @return 1 for sucess, 0 for fail
  */
 int MemoryStorage::write_block(bid_t id, const uint8_t* src) {
-    if(id >= BLOCK_SIZE){
+    if(id >= NR_BLOCKS){
         LOG(WARNING) << "Writing Block " << id << " out of Range " << NR_BLOCKS;
         return 0;
     }

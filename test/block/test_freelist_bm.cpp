@@ -31,7 +31,7 @@ public:
         sblock.s_iblock = s_iblock;
         sblock.nr_iblock = nr_iblock;
         sblock.s_dblock = s_dblock;
-        sblock.nr_dblock= nr_dblock;
+        sblock.nr_dblock= nr_block - nr_iblock -1;
 
         p_storage->write_block(0,(uint8_t*)(&sblock));
 
@@ -46,7 +46,7 @@ bid_t BlockTest:: nr_block = 1300;
 bid_t BlockTest:: s_iblock = 1;
 bid_t BlockTest:: nr_iblock = 9;
 bid_t BlockTest:: s_dblock = 10;
-bid_t BlockTest:: nr_dblock = 1290;
+bid_t BlockTest:: nr_dblock = BlockTest::nr_block - BlockTest::nr_iblock - 1;
 Storage* BlockTest:: p_storage = (Storage*)new MemoryStorage(nr_block);
 FreeListBlockManager* BlockTest:: fbm = new FreeListBlockManager(p_storage);
 
@@ -67,14 +67,14 @@ TEST_F(BlockTest,MkfsTest) {
     for(bid_t i=s_dblock;i<=nr_dblock+s_dblock;i+=BLOCK_SIZE/sizeof(bid_t)){
         p_storage->read_block(i,db.data);
         if(i + delta < nr_block)
-            EXPECT_EQ(db.fl_entry[0],i+delta);
+            EXPECT_EQ(db.fl_entry[0],i+delta) << "i delta nr_block " << i << " " << delta << " " << nr_block; 
         else
-            EXPECT_EQ(db.fl_entry[0],0);
+            EXPECT_EQ(db.fl_entry[0],0) << "i delta nr_block " << i << " " << delta << " " << nr_block; 
         for(int j=1;j<delta;j++){
             if(i + j < nr_block)
                 EXPECT_EQ(db.fl_entry[j],i+j);
             else
-                EXPECT_EQ(db.fl_entry[0],0);
+                EXPECT_EQ(db.fl_entry[j],0);
         }
     }
 }
