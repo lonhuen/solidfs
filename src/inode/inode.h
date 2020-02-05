@@ -7,6 +7,7 @@ enum inode_type {
   FREE,DIRECTORY
 };
 
+// let's suppose that default empty value in p_block would be 0
 union INode{
   uint8_t data[256];
   struct {

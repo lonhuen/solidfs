@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 
+//TODO(lonhh): do we need move constructor here?
 class Directory {
     // unordered_map is more efficient for pure entity look up
     //std::unordered_map<std::string, int> entry_m;
