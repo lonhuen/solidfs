@@ -30,19 +30,25 @@ void FileSystem::mkfs() {
     im->mkfs();
     bm->mkfs();
 
-}
+    // init inode for the root
+    INode inode = INode::get_inode(0,inode_type::DIRECTORY);
+    bid_t b = bm->allocate_dblock();
+    inode.p_block[0] = b;
+    inode.block++;
 
-Directory FileSystem::read_directory(iid_t id) {
-    // TODO(lonhh): whether we need to optimize the one time read_inode here?
-    INode inode;
-    im->read_inode(id,inode.data);
-    uint8_t* buffer = new uint8_t[inode.size];
-
-    read(id,buffer,inode.size,0);
-
-    Directory dr(id,buffer,inode.size);
-    delete []buffer;
-    return dr;
+    // init the data block
+    Block bl;
+    Directory dr(0,0);
+    inode.size = dr.serialize(bl.data,BLOCK_SIZE);
+    /*
+    std::cout << "mkfs" << std::endl;
+    for(auto i=0;i<13;i++) {
+        std::cout << std::hex << (uint32_t)bl.data[i] << " ";
+    }
+    std::cout << std::endl;
+    */
+    bm->write_dblock(b,bl.data);
+    im->write_inode(0,inode.data);
 }
 
 int FileSystem::path2iid(const std::string& path,iid_t* id) {
@@ -73,20 +79,17 @@ int FileSystem::read(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset) {
     im->read_inode(id,inode.data);
 
     // sanity check
-    if(offset >= inode.size) {
+    if(offset > inode.size) {
         LOG(ERROR) << "Trying to access offset outside the file";
         return 0;
-    } else if (offset + size >= inode.size) {
+    } else if (offset + size > inode.size) {
         LOG(WARNING) << "Trying to access outside the file";
         size = inode.size - offset;
     }
     // the number of blocks to read
-    uint32_t nr_blocks = IDIV_BLOCK_SIZE(size);
-    if(MOD_BLOCK_SIZE(offset)) {
-        nr_blocks++;
-    }
     uint32_t s_index = IDIV_BLOCK_SIZE(offset);
-    uint32_t e_index = nr_blocks + s_index;
+    uint32_t e_index = IDIV_BLOCK_SIZE(offset+size) + 1;
+    uint32_t nr_blocks = e_index - s_index;
     std::vector<bid_t> blockid_arrays = read_dblock_index(inode,s_index,e_index);
 
     // the total number of bytes
@@ -140,14 +143,11 @@ int FileSystem::write(iid_t id,const uint8_t* src,uint32_t size,uint32_t offset)
     // just get all the previous allocated blocks (before write function)
 
     // the number of blocks to write
-    uint32_t nr_blocks = IDIV_BLOCK_SIZE(size);
-    if(MOD_BLOCK_SIZE(offset)) {
-        nr_blocks++;
-    }
     uint32_t s_index = IDIV_BLOCK_SIZE(offset);
-
+    uint32_t e_index = IDIV_BLOCK_SIZE(offset+size) + 1;
+    uint32_t nr_blocks = e_index - s_index;
+    
     // don't count the just-allocated blocks
-    uint32_t e_index = nr_blocks + s_index - allocated_blocks.size();
     std::vector<bid_t> blockid_arrays = read_dblock_index(inode,s_index,e_index);
     blockid_arrays.reserve(blockid_arrays.size() + std::distance(allocated_blocks.begin(),allocated_blocks.end()));
     blockid_arrays.insert(blockid_arrays.end(),allocated_blocks.begin(),allocated_blocks.end());
@@ -414,4 +414,54 @@ bid_t FileSystem::new_dblock(INode& inode) {
     }
     im->write_inode(inode.inode_number,inode.data);
     return allocate_block_array[nr_mblock];
+}
+Directory FileSystem::read_directory(iid_t id) {
+    INode inode;
+    im->read_inode(id,inode.data);
+    return std::move(read_directory(inode));
+}
+int FileSystem::write_directory(iid_t id,Directory& dr) {
+    INode inode;
+    im->read_inode(id,inode.data);
+    return (write_directory(inode,dr));
+}
+
+Directory FileSystem::read_directory(INode& inode) {
+    if(!inode.size) {
+        LOG(ERROR) << "size = 0 for directory inode " << inode.inode_number;
+        return std::move(Directory());
+    }
+    uint8_t* buffer = new uint8_t[inode.size];
+    read(inode.inode_number,buffer,inode.size,0);
+    Directory dr(inode.inode_number,buffer,inode.size);
+    return std::move(dr);
+}
+
+int FileSystem::write_directory(INode& inode,Directory& dr) {
+    // suppose that one block will be enough, if not allocate one more block 
+    // fisrt serialize
+    auto i = 1;
+    // TODO(lonhh) : let's set up the maximum file size for directory
+    // suppose it's 10 now
+    while(i < 10) {
+        uint8_t* buffer = new uint8_t[BLOCK_SIZE * i];
+        auto ret = dr.serialize(buffer,BLOCK_SIZE * i);
+        if(ret == 0) {
+            i++;
+            delete []buffer;
+            continue;
+        }
+        write(inode.inode_number,buffer,ret,0);
+        delete []buffer;
+        break;
+    }
+    return 1;
+}
+
+iid_t FileSystem::new_inode(INode& inode) {
+    // judge whether this is a directory
+    if(inode.itype != inode_type::DIRECTORY) {
+        LOG(WARNING) << "cannot new a inode under a non-directory inode";
+        return 0;
+    }
 }

@@ -14,7 +14,7 @@ class INodeManager {
         Storage* p_storage;
 
     public:
-        const static uint32_t nr_iblock_PER_BLOCK = BLOCK_SIZE/sizeof(union INode);
+        const static uint32_t nr_iblock_PER_BLOCK = BLOCK_SIZE/sizeof(INode);
 
         INodeManager(Storage* p_storage);
         virtual void mkfs();

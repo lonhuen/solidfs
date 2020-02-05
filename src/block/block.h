@@ -14,6 +14,6 @@ struct Block{
             // used for indexing data blocks by inode
             bid_t bl_entry[BLOCK_SIZE/sizeof(bid_t)];
         };
-        union INode inode[BLOCK_SIZE/sizeof(INode)];
+        INode inode[BLOCK_SIZE/sizeof(INode)];
     };
 };

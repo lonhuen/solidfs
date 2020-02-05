@@ -66,16 +66,13 @@ TEST_F(INodeTest,MkfsTest) {
         Block bl;
         p_storage->read_block(i,bl.data);
         for(auto j=0;j<INodeManager::nr_iblock_PER_BLOCK;j++){
-            if(i==s_iblock && j==0)
-                EXPECT_EQ(bl.inode[j].itype,inode_type::DIRECTORY);
-            else
-                EXPECT_EQ(bl.inode[j].itype,inode_type::FREE);
+            EXPECT_EQ(bl.inode[j].itype,inode_type::FREE);
         }
     }
 }
 
 TEST_F(INodeTest,AllocateINodeTest) {
-    for(auto i=1;i<nr_iblock*INodeManager::nr_iblock_PER_BLOCK;i++){
+    for(auto i=0;i<nr_iblock*INodeManager::nr_iblock_PER_BLOCK;i++){
         EXPECT_EQ(im->allocate_inode(),i);
         INode inode;
         inode.itype = inode_type::DIRECTORY;
@@ -84,13 +81,13 @@ TEST_F(INodeTest,AllocateINodeTest) {
 }
 
 TEST_F(INodeTest,FreeINodeTest) {
-    for(auto i=1;i<nr_iblock*INodeManager::nr_iblock_PER_BLOCK;i++){
+    for(auto i=0;i<nr_iblock*INodeManager::nr_iblock_PER_BLOCK;i++){
         EXPECT_EQ(im->free_inode(i),1);
     }
 }
 
 TEST_F(INodeTest,AllocateAfterFreeTest) {
-    for(auto i=1;i<nr_iblock*INodeManager::nr_iblock_PER_BLOCK;i++){
+    for(auto i=0;i<nr_iblock*INodeManager::nr_iblock_PER_BLOCK;i++){
         EXPECT_EQ(im->allocate_inode(),i);
         INode inode;
         inode.itype = inode_type::DIRECTORY;
@@ -100,13 +97,13 @@ TEST_F(INodeTest,AllocateAfterFreeTest) {
 
 
 TEST_F(INodeTest,DoubleFreeTest) {
-    for(auto i=1;i<nr_iblock*INodeManager::nr_iblock_PER_BLOCK;i++){
+    for(auto i=0;i<nr_iblock*INodeManager::nr_iblock_PER_BLOCK;i++){
         EXPECT_EQ(im->free_inode(i),1) << i;
     }
-    for(auto i=1;i<nr_iblock*INodeManager::nr_iblock_PER_BLOCK;i++){
+    for(auto i=0;i<nr_iblock*INodeManager::nr_iblock_PER_BLOCK;i++){
         EXPECT_EQ(im->free_inode(i),0);
     }
-    for(auto i=1;i<nr_iblock*INodeManager::nr_iblock_PER_BLOCK;i++){
+    for(auto i=0;i<nr_iblock*INodeManager::nr_iblock_PER_BLOCK;i++){
         EXPECT_EQ(im->allocate_inode(),i);
         INode inode;
         inode.itype = inode_type::DIRECTORY;

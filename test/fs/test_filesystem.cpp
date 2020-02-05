@@ -31,8 +31,8 @@ TEST_F(FileSystemTest,InitTest) {
   fs->mkfs();
   INode inode;
   fs->im->read_inode(0,inode.data);
-  EXPECT_EQ(inode.size, 0);
-  EXPECT_EQ(inode.block, 0);
+  EXPECT_EQ(inode.size, 13);
+  EXPECT_EQ(inode.block, 1);
   fs->im->write_inode(0,inode.data);
 }
 
@@ -179,9 +179,7 @@ TEST_F(FileSystemTest,ReadTest) {
         }
     }
 }
-*/
 
-/*
 TEST_F(FileSystemTest,NewDBlockTest) {
     // fs->mkfs();
     // auto nr = 10 + 512 + 512 * 7;
@@ -218,7 +216,6 @@ TEST_F(FileSystemTest,NewDBlockTest) {
         EXPECT_EQ(allocated_block_array[i],v[i]);
     }
 }
-*/
 
 TEST_F(FileSystemTest,WriteTest) {
     fs->mkfs();
@@ -248,5 +245,34 @@ TEST_F(FileSystemTest,WriteTest) {
         fs->im->read_inode(0,inode.data);
         std::cout << inode.size << std::endl;
         std::cout << inode.block << std::endl;
+    });
+}
+*/
+
+TEST_F(FileSystemTest,DirectoryTest) {
+    // initialization and read
+    fs->mkfs();
+    INode inode;
+    fs->im->read_inode(0,inode.data);
+    EXPECT_EQ(inode.size,13);
+    EXPECT_EQ(inode.block,1);
+    EXPECT_EQ(inode.p_block[0],11);
+    uint8_t buffer[13];
+    //dr.serialize(buffer,13);
+    EXPECT_EQ(fs->read(0,buffer,13,0),13);
+    Directory dr = fs->read_directory(0);
+    std::for_each(dr.entry_m.begin(),dr.entry_m.end(),[&](auto p){
+        EXPECT_TRUE(p.first == "." || p.first == "..");
+        EXPECT_TRUE(p.second == 0);
+    });
+
+    // write and read
+    dr.insert_entry("home",1);
+    dr.insert_entry("bin",2);
+    dr.insert_entry("dev",3);
+    fs->write_directory(0,dr);
+    dr = fs->read_directory(0);
+    std::for_each(dr.entry_m.begin(),dr.entry_m.end(),[&](auto p){
+        std::cout << p.first << " " << p.second << std::endl;
     });
 }

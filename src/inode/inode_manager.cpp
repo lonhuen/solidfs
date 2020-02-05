@@ -23,13 +23,16 @@ void INodeManager:: mkfs() {
     this->s_iblock = sb.s_iblock;
     this->nr_iblock = sb.nr_iblock;
     
-    // initialize with root
     Block bl;
     p_storage->read_block(s_iblock,bl.data);
+    /*
     bl.inode[0].itype = inode_type::DIRECTORY;
     bl.inode[0].size = 0;
     bl.inode[0].block = 0;
-    for(auto j=1;j<nr_iblock_PER_BLOCK;j++) {
+    INode::init_inode(bl.inode[0],0,inode_type::DIRECTORY);
+    */
+
+    for(auto j=0;j<nr_iblock_PER_BLOCK;j++) {
         bl.inode[j].itype = inode_type::FREE;
     }
     p_storage->write_block(s_iblock,bl.data);

@@ -2,6 +2,7 @@
 #include "directory/directory.h"
 #include "utils/log_utils.h"
 
+Directory::Directory() {}
 Directory::Directory(iid_t id, iid_t parent): entry_m({{".",id},{"..",parent}}),id(id) {
 }
 Directory::Directory(iid_t id,const uint8_t* byte_stream, uint32_t size): id(id) {
@@ -51,7 +52,7 @@ int Directory::get_entry(const std::string& s,iid_t* ret) const {
 int Directory::serialize(uint8_t* byte_stream, uint32_t size) {
     uint32_t s = 0;
     for(auto p=entry_m.begin();p!=entry_m.end();p++) {
-        if( s + p->first.length() + sizeof(iid_t) + 1 < size) {
+        if( s + p->first.length() + sizeof(iid_t) + 1 <= size) {
             memcpy(byte_stream+s,p->first.c_str(),p->first.length() + 1);
             s += p->first.length() + 1;
             memcpy(byte_stream+s,&(p->second),sizeof(iid_t));
@@ -61,7 +62,7 @@ int Directory::serialize(uint8_t* byte_stream, uint32_t size) {
             return 0;
         }
     }
-    memset(byte_stream+s,0,size - s);
+    //memset(byte_stream+s,0,size - s);
     return s;
 }
 
