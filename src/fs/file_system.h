@@ -34,7 +34,8 @@ public:
     // allocate a new datablock for inode, but shall we see the # of datablocks? yes we can
     // most of the time we should write the file immediately after allocating a new block for it
     bid_t new_dblock(INode& inode);
-    iid_t new_inode(INode& inode);
+    // notice we only allocate a new inode, but we need to write it/init it
+    iid_t new_inode(const std::string& file_name,INode& inode);
     Directory read_directory(INode& inode);
     int write_directory(INode& inode,Directory& dr);
     std::vector<bid_t> read_dblock_index(INode& inode,uint32_t begin,uint32_t end);

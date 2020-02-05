@@ -458,10 +458,22 @@ int FileSystem::write_directory(INode& inode,Directory& dr) {
     return 1;
 }
 
-iid_t FileSystem::new_inode(INode& inode) {
+iid_t FileSystem::new_inode(const std::string& file_name,INode& inode) {
     // judge whether this is a directory
     if(inode.itype != inode_type::DIRECTORY) {
         LOG(WARNING) << "cannot new a inode under a non-directory inode";
         return 0;
     }
+    auto n_inode = im->allocate_inode();
+    if(n_inode == 0) {
+        LOG(WARNING) << "cannot allocate a new inode";
+        return 0;
+    }
+
+    Directory dr = read_directory(inode);
+    dr.insert_entry(file_name,n_inode);
+    write_directory(inode,dr);
+    // TODO(lonhh) : we just update the inode, but this should be optimzied
+    im->read_inode(inode.inode_number,inode.data);
+    return n_inode;
 }

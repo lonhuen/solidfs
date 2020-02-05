@@ -272,7 +272,30 @@ TEST_F(FileSystemTest,DirectoryTest) {
     dr.insert_entry("dev",3);
     fs->write_directory(0,dr);
     dr = fs->read_directory(0);
-    std::for_each(dr.entry_m.begin(),dr.entry_m.end(),[&](auto p){
-        std::cout << p.first << " " << p.second << std::endl;
-    });
+    // std::for_each(dr.entry_m.begin(),dr.entry_m.end(),[&](auto p){
+    //     std::cout << p.first << " " << p.second << std::endl;
+    // });
+}
+
+TEST_F(FileSystemTest,NewINodeTest) {
+    // initialization and read
+    fs->mkfs();
+    INode inode;
+    fs->im->read_inode(0,inode.data);
+
+    fs->new_inode("home",inode);
+    fs->new_inode("etc",inode);
+    fs->new_inode("bin",inode);
+    Directory dr = fs->read_directory(0);
+
+    EXPECT_EQ(dr.contain_entry("home"),1);
+    EXPECT_EQ(dr.contain_entry("bin"),1);
+    EXPECT_EQ(dr.contain_entry("etc"),1);
+    iid_t ret;
+    dr.get_entry("home",&ret);
+    EXPECT_EQ(ret,1);
+    dr.get_entry("bin",&ret);
+    EXPECT_EQ(ret,1);
+    dr.get_entry("etc",&ret);
+    EXPECT_EQ(ret,1);
 }
