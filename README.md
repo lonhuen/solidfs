@@ -13,3 +13,6 @@ cmake ..
 make
 make install
 ```
+
+2. some todo
+* there might be some bugs about the block manager mkfs things, which relies on the storage implementation.

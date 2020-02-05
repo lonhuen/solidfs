@@ -107,6 +107,71 @@ int FileSystem::read(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset) {
     return s;
 }
 
+int FileSystem::write(iid_t id,const uint8_t* src,uint32_t size,uint32_t offset) {
+    // first judge whether we need to allocate more blocks
+
+    // TODO(lonhh) whether we can batch the allocating??
+    INode inode;
+    im->read_inode(id,inode.data);
+    std::vector<bid_t> allocated_blocks;
+    if(offset + size > inode.block * BLOCK_SIZE) {
+        uint32_t nr_allocate_blocks = IDIV_BLOCK_SIZE(offset+size);
+        allocated_blocks.reserve(nr_allocate_blocks);
+        for(auto i=0;i<nr_allocate_blocks;i++){
+            allocated_blocks.push_back(new_dblock(inode));
+        }
+    }
+
+    auto flag = 0;
+    std::for_each(allocated_blocks.begin(),allocated_blocks.end(),[&](auto p){
+        if(p == 0) flag++;
+    });
+
+    // TODO(lonhh) if we don't get enough blocks, just discard?
+    if(flag) {
+        LOG(ERROR) << "Not getting enough blocks for writing file " << inode.inode_number;
+        // free all the allocated ones
+        std::for_each(allocated_blocks.begin(),allocated_blocks.end(),[&](auto p){
+            if(p != 0) bm->free_dblock(p);
+        });
+        return 0;
+    }
+
+
+    // just get all the previous allocated blocks (before write function)
+
+    // the number of blocks to write
+    uint32_t nr_blocks = IDIV_BLOCK_SIZE(size);
+    if(MOD_BLOCK_SIZE(offset)) {
+        nr_blocks++;
+    }
+    uint32_t s_index = IDIV_BLOCK_SIZE(offset);
+
+    // don't count the just-allocated blocks
+    uint32_t e_index = nr_blocks + s_index - allocated_blocks.size();
+    std::vector<bid_t> blockid_arrays = read_dblock_index(inode,s_index,e_index);
+    blockid_arrays.reserve(blockid_arrays.size() + std::distance(allocated_blocks.begin(),allocated_blocks.end()));
+    blockid_arrays.insert(blockid_arrays.end(),allocated_blocks.begin(),allocated_blocks.end());
+
+    // the total number of bytes
+    uint32_t s = 0;
+    // read [s_addr,s_addr+nr_bytes) in the block
+    uint32_t s_addr = MOD_BLOCK_SIZE(offset);
+    uint32_t nr_bytes = std::min(BLOCK_SIZE - s_addr, size - s);
+    for(auto p=blockid_arrays.begin();p!=blockid_arrays.end();p++) {
+        Block bl;
+        bm->read_dblock(*p,bl.data);
+        std::memcpy(bl.data+s_addr,src+s,nr_bytes);
+        bm->write_dblock(*p,bl.data);
+
+        //update the s_addr and nr_bytes
+        s = s + nr_bytes;
+        s_addr = MOD_BLOCK_SIZE(offset + s);
+        nr_bytes = std::min(BLOCK_SIZE - s_addr, size - s);
+    }
+    return s;
+}
+
 // read [begin,end) entries
 std::vector<bid_t> FileSystem::read_dblock_index(INode& inode,uint32_t begin,uint32_t end) {
     std::vector<bid_t> ret;

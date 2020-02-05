@@ -23,7 +23,7 @@ public:
     void mkfs();
 
     int read(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset);
-    int write(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset);
+    int write(iid_t id,const uint8_t* src,uint32_t size,uint32_t offset);
 
     int path2iid(const std::string& path,iid_t* id);
     Directory read_directory(iid_t id);
