@@ -41,7 +41,7 @@ Directory FileSystem::read_directory(iid_t id) {
     read(id,buffer,inode.size,0);
 
     Directory dr(id,buffer,inode.size);
-    delete buffer;
+    delete []buffer;
     return dr;
 }
 
@@ -205,157 +205,147 @@ uint32_t FileSystem::block_lookup_per_region(INode& inode,uint32_t begin,uint32_
 
 bid_t FileSystem::new_dblock(INode& inode) {
     //TODO(lonhh) : do we need to check maximum file size or maximum # of blocks
-    //TODO(lonhh) : we need to initialize the data block for mapping?
-    // the new one should be in the direct entries
-    // we should make sure atomic operation
-    // maybe we can optimize by providing atomic api
     const bid_t factor = BLOCK_SIZE/sizeof(bid_t);
+
+    bid_t allocate_block_array[4];
+    // 4 types, index-1, index-2, index-3
+    uint32_t index_array[4];
+    uint32_t flag_array[4];
+
+    // let's first do the translation
     if(inode.block < 10) {
-        auto ret = bm->allocate_dblock();
-        if(!ret) {
-            LOG(ERROR) << "failing allocating a data block for inode " << inode.inode_number;
-            return 0;
-        }
-        inode.p_block[inode.block] = ret;
-        inode.block++;
-        im->write_inode(inode.inode_number,inode.data);
-        return ret;
-    // 1-level indirect
+        // the first type -- direct lookup
+        index_array[0] = 0;
+        index_array[1] = inode.block;
     } else if (inode.block < 10 + factor) {
-        // allocate the mapping block if we have not allocated it before
-        if(inode.block == 10 && inode.p_block[10] == 0) {
-            auto ret = bm->allocate_dblock();
-            if(!ret) {
-                LOG(ERROR) << "failing allocating a data block for inode " << inode.inode_number;
-                return 0;
+        auto tmp = inode.block - 10;
+        // the second type -- 1-indirect lookup
+        index_array[0] = 1;
+        index_array[1] = tmp % factor;
+    } else if (inode.block < 10 + factor + factor * factor) {
+        auto tmp = inode.block - 10 - factor;
+        // the second type -- 2-indirect lookup
+        index_array[0] = 2;
+        index_array[1] = tmp / factor;
+        index_array[2] = tmp % factor;
+    } else {
+        auto tmp = inode.block - 10 - factor - factor * factor;
+        // the second type -- 3-indirect lookup
+        index_array[0] = 3;
+        index_array[1] = tmp / factor / factor;
+        index_array[2] = (tmp / factor) % factor;
+        index_array[3] = tmp  % factor;
+    }
+
+    // let's allocate the data block for look up then
+    // number of mapping blocks to allocate
+    // actually we only need to count how many datablocks we need to allocate
+
+    // TODO(lonhh) might optimize here
+    for(auto i=1;i<=index_array[0];i++) {
+        flag_array[i] = index_array[i];
+        for(auto j=i+1;j<=index_array[0];j++) {
+            flag_array[i] += index_array[j];
+        }
+    }
+
+
+    uint32_t nr_mblock = 0;
+    for(auto i=1;i<=index_array[0];i++) {
+        nr_mblock += (flag_array[i] == 0 ? 1 : 0);
+    }
+
+    // try to allocate nr_mblock + 1 blocks
+    auto flag = 0;
+    for(auto i=0;i<nr_mblock+1;i++) {
+        allocate_block_array[i] = bm->allocate_dblock();
+        flag += (allocate_block_array[i] != 0 ? 1 : 0);
+    }
+
+    // we don't get enough blocks. Just free all of them
+    if (flag != nr_mblock + 1) {
+        for(auto i=0;i<nr_mblock+1;i++) {
+            if(allocate_block_array[i]) {
+                bm->free_dblock(allocate_block_array[i]);
             }
-            inode.p_block[10] = ret;
         }
-        auto ret = bm->allocate_dblock();
-        if(!ret) {
-            // maybe we need a dirty bit here
-            im->write_inode(inode.inode_number,inode.data);
-            LOG(ERROR) << "failing allocating a data block for inode " << inode.inode_number;
-            return 0;
+        LOG(ERROR) << "Not getting enough data blocks for INode " 
+            << inode.inode_number << " (" << flag << "/" << nr_mblock+1 << ")";
+        return 0;
+    }
+
+    // now we have allocated all the datablocks. Let's update
+    // 1. the mapping
+    // 2. the block field of inode
+    inode.block++;
+    if(index_array[0] == 0) {
+        inode.p_block[index_array[1]] = allocate_block_array[nr_mblock];
+    } else if (index_array[0] == 1) {
+        // update the inode
+        auto i_mblock = 0;
+        if(flag_array[1] == 0) {
+            inode.p_block[10] = allocate_block_array[i_mblock];
+            i_mblock++;
         }
+        // update the mapping block
         Block bl;
         bm->read_dblock(inode.p_block[10],bl.data);
-        bl.bl_entry[inode.block - 10] = ret;
+        bl.bl_entry[index_array[1]] = allocate_block_array[nr_mblock];
         bm->write_dblock(inode.p_block[10],bl.data);
 
-        inode.block++;
-        im->write_inode(inode.inode_number,inode.data);
-        return ret;
-    // 2-level indirect
-    } else if (inode.block < 10 + factor + factor * factor) {
-        auto level_index = inode.block - 10 - factor;
-        // allocate the first level mapping block if level_index = 0
-        // allocate the second level mapping block if level_index % 512 == 0
-        if(level_index == 0 && inode.p_block[11] == 0) {
-            auto ret = bm->allocate_dblock();
-            if(!ret) {
-                LOG(ERROR) << "failing allocating a data block for inode " << inode.inode_number;
-                return 0;
-            }
-            inode.p_block[11] = ret;
+    } else if (index_array[0] == 2) {
+        // try to read inode.p_block[12] as the first level mapping bl1
+        auto i_mblock = 0;
+        if(flag_array[1] == 0) {
+            inode.p_block[11] = allocate_block_array[i_mblock];
+            i_mblock++;
         }
+        Block bl1;
+        bm->read_dblock(inode.p_block[11],bl1.data);
 
-        Block lv1_bl;
-        bm->read_dblock(inode.p_block[11],lv1_bl.data); 
-
-        // allocate the second level mapping block
-        if(level_index % factor== 0 && lv1_bl.bl_entry[level_index/factor] == 0) {
-            auto ret = bm->allocate_dblock();
-            if(!ret) {
-                // maybe we need a dirty bit here
-                im->write_inode(inode.inode_number,inode.data);
-                LOG(ERROR) << "failing allocating a data block for inode " << inode.inode_number;
-                return 0;
-            }
-            lv1_bl.bl_entry[level_index/factor] = ret;
-            bm->write_dblock(inode.p_block[11],lv1_bl.data); 
+        // try to read bl1 entry[index_array[1]] as the second level mapping bl2
+        if(flag_array[2] == 0) {
+            bl1.bl_entry[index_array[1]] = allocate_block_array[i_mblock];
+            bm->write_dblock(inode.p_block[11],bl1.data);
+            i_mblock++;
         }
-        
-        Block lv2_bl;
-        bm->read_dblock(lv1_bl.bl_entry[level_index/factor],lv2_bl.data); 
-        
-        // allocate the real data block
-        auto ret = bm->allocate_dblock();
-        if(!ret) {
-            // maybe we need a dirty bit here
-            im->write_inode(inode.inode_number,inode.data);
-            LOG(ERROR) << "failing allocating a data block for inode " << inode.inode_number;
-            return 0;
-        }
-        lv2_bl.bl_entry[level_index%factor] = ret;
-        bm->write_dblock(lv1_bl.bl_entry[level_index/factor],lv2_bl.data); 
-
-        inode.block++;
-        im->write_inode(inode.inode_number,inode.data);
-        return ret;
+        Block bl2;
+        bm->read_dblock(bl1.bl_entry[index_array[1]],bl2.data);
+        // allocate the data block
+        bl2.bl_entry[index_array[2]] = allocate_block_array[nr_mblock];
+        bm->write_dblock(bl1.bl_entry[index_array[1]],bl2.data);
     } else {
-        auto level_index = inode.block - 10 - factor - factor * factor * factor;
-        // allocate the first level mapping block if level_index = 0
-        // allocate the second level mapping block if level_index % (512 * 512) == 0
-        // allocate the third level mapping block if level_index % (512) == 0
-        if(level_index == 0 && inode.p_block[12] == 0) {
-            auto ret = bm->allocate_dblock();
-            if(!ret) {
-                LOG(ERROR) << "failing allocating a data block for inode " << inode.inode_number;
-                return 0;
-            }
-            inode.p_block[12] = ret;
+        // try to read inode.p_block[13] as the first level mapping bl1
+        auto i_mblock = 0;
+        if(flag_array[1] == 0) {
+            inode.p_block[12] = allocate_block_array[i_mblock];
+            i_mblock++;
         }
+        Block bl1;
+        bm->read_dblock(inode.p_block[12],bl1.data);
 
-        Block lv1_bl;
-        bm->read_dblock(inode.p_block[12],lv1_bl.data); 
-
-        // allocate the second level mapping block
-        if(level_index % (factor * factor) == 0 && lv1_bl.bl_entry[level_index/(factor*factor)] == 0) {
-            auto ret = bm->allocate_dblock();
-            if(!ret) {
-                // maybe we need a dirty bit here
-                im->write_inode(inode.inode_number,inode.data);
-                LOG(ERROR) << "failing allocating a data block for inode " << inode.inode_number;
-                return 0;
-            }
-            lv1_bl.bl_entry[level_index/(factor*factor)] = ret;
-            bm->write_dblock(inode.p_block[12],lv1_bl.data); 
+        // try to read bl1 entry[index_array[1]] as the second level mapping bl2
+        if(flag_array[2] == 0) {
+            bl1.bl_entry[index_array[1]] = allocate_block_array[i_mblock];
+            bm->write_dblock(inode.p_block[12],bl1.data);
+            i_mblock++;
+        }
+        Block bl2;
+        bm->read_dblock(bl1.bl_entry[index_array[1]],bl2.data);
+        
+        // try to read bl2 entry[index_array[2]] as the third level mapping bl3
+        if(flag_array[3] == 0) {
+            bl2.bl_entry[index_array[2]] = allocate_block_array[i_mblock];
+            bm->write_dblock(bl1.bl_entry[index_array[1]],bl2.data);
+            i_mblock++;
         }
         
-        Block lv2_bl;
-        bm->read_dblock(lv1_bl.bl_entry[level_index/(factor*factor)],lv2_bl.data); 
-        
-        // allocate the third level mapping 
-        if(level_index % factor  == 0 && lv2_bl.bl_entry[level_index/factor] == 0) {
-            auto ret = bm->allocate_dblock();
-            if(!ret) {
-                // maybe we need a dirty bit here
-                im->write_inode(inode.inode_number,inode.data);
-                LOG(ERROR) << "failing allocating a data block for inode " << inode.inode_number;
-                return 0;
-            }
-            lv2_bl.bl_entry[level_index/factor] = ret;
-            bm->write_dblock(lv1_bl.bl_entry[level_index/(factor*factor)],lv2_bl.data); 
-        }
-       
-        Block lv3_bl;
-        bm->read_dblock(lv2_bl.bl_entry[level_index/factor],lv3_bl.data); 
-
-        // allocate the real data block
-        auto ret = bm->allocate_dblock();
-        if(!ret) {
-            // maybe we need a dirty bit here
-            im->write_inode(inode.inode_number,inode.data);
-            LOG(ERROR) << "failing allocating a data block for inode " << inode.inode_number;
-            return 0;
-        }
-        lv3_bl.bl_entry[level_index%factor] = ret;
-        bm->write_dblock(lv2_bl.bl_entry[level_index/factor],lv3_bl.data); 
-
-        inode.block++;
-        im->write_inode(inode.inode_number,inode.data);
-        return ret;
-
+        // allocate the data block
+        Block bl3;
+        bm->read_dblock(bl2.bl_entry[index_array[2]],bl3.data);
+        bl3.bl_entry[index_array[3]] = allocate_block_array[nr_mblock];
+        bm->write_dblock(bl2.bl_entry[index_array[2]],bl3.data);
     }
+    im->write_inode(inode.inode_number,inode.data);
+    return allocate_block_array[nr_mblock];
 }

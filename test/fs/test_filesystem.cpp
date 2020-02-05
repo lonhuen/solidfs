@@ -15,18 +15,18 @@ protected:
 
 };
 
-FileSystem* FileSystemTest::fs = new FileSystem(1300,9);
-
+FileSystem* FileSystemTest::fs = new FileSystem(10 + 512 + 512 * 512 ,9);
 TEST_F(FileSystemTest,InitTest) {
   super_block sb;
   fs->storage->read_block(0,sb.data);
-  EXPECT_EQ(sb.nr_block, 1300);
-  EXPECT_EQ(sb.nr_dblock, 1290);
+  EXPECT_EQ(sb.nr_block, 10+512+512*512);
+  EXPECT_EQ(sb.nr_dblock, 10+512+512*512 - 10);
   EXPECT_EQ(sb.s_dblock, 10);
   EXPECT_EQ(sb.s_iblock, 1);
   EXPECT_EQ(sb.nr_iblock, 9);
 }
 
+/*
 TEST_F(FileSystemTest,ReadBlockIndexTest) {
     // first let's write to the root inode
     fs->mkfs();
@@ -86,11 +86,11 @@ TEST_F(FileSystemTest,ReadBlockIndexTest) {
     fs->im->write_inode(0,inode.data);
 
     std::vector<bid_t> v = fs->read_dblock_index(inode,0,10+512+512*512+512);
-    /* this test costs much time
-    for(auto i=0;i<10+512+512*512+512;i++) {
-        EXPECT_EQ(v[i],i);
-    }
-    */
+    // this test costs much time
+    // for(auto i=0;i<10+512+512*512+512;i++) {
+    //     EXPECT_EQ(v[i],i);
+    // }
+    // 
 
     for(auto i=0;i<10+512+512*2;i++) {
         EXPECT_EQ(v[i],i);
@@ -129,17 +129,6 @@ TEST_F(FileSystemTest,ReadTest) {
     fs->im->write_inode(0,inode.data);
 
     std::vector<bid_t> v = fs->read_dblock_index(inode,0,20);
-    /*
-    std::for_each(v.begin(),v.end(),[](auto p){
-        std::cout << p << std::endl;
-        Block tmp;
-        // suppose we are writing in units of uint64_t
-        for(uint32_t i=0;i<512;i++) {
-            tmp.bl_entry[i] = p * 512 + i;
-        }
-        fs->bm->write_dblock(p,tmp.data);
-    });
-    */
    for(auto i=0;i<20;i++) {
         Block tmp;
         // suppose we are writing in units of uint64_t
@@ -180,63 +169,33 @@ TEST_F(FileSystemTest,ReadTest) {
         }
     }
 }
-
-/*
-TEST_F(FileSystemTest,path2iid) {
-/*
-TEST_F(FileSystemTest,path2iid) {
-    
-  // FileSystem fs;
-  // fs.path2iid("/home/lonhuen/////../github/");
-  // EXPECT_EQ(fs.path2iid("/"),0);
-
-  const std::string path = "/";
-  std::string::size_type p1,p2;
-  p2 = path.find('/');
-  p1 = 0;
-  while(std::string::npos != p2) {
-    if((p1 != p2)) {
-      std::cout << path.substr(p1,p2-p1) << std::endl;
-    }
-    p1 = p2 + 1;
-    p2 = path.find('/',p1);
-  }
-}
-
-TEST_F(FileSystemTest, Path2iidTest {
-    // TODO
-    int iid = fs.path2iid("some path");
-    INODE dst;
-    im->read_inode(id, inode.data);
-    EXPECT_EQ(im.inode_number, id);
-}
-
-TEST_F(FileSystemTest, ReadPathTest) {
-  // create a test file
-  ofstream testfile;
-  testfile.open("test_file.txt");
-  testfile << "This is a test file.";
-  testfile.close();
-
-  // read 2 bytes
-  char buf1[3];
-  int res;
-  res = fs.read("test_file.txt", buf1, 2, 0);
-  EXPECT_EQ(res, 2);
-  EXPECT_EQ(buf1, "Th");
-
-  // read 5 bytes from offset
-  char buf2[6];
-  res = fs.read("test_file.txt", buf2, 5, 3);
-  EXPECT_EQ(res, 5);
-  EXPECT_EQ(buf2, "s is ");
-
-  // read out of range
-  char buf3[21];
-  res = fs.read("test_file.txt", buf3, 40, 0);
-  EXPECT_EQ(res, 20);
-  EXPECT_EQ(buf3, "This is a test file.");
-
-  std::remove("test_file.txt");
-}
 */
+
+TEST_F(FileSystemTest,NewDBlockTest) {
+    // let's write the first 20 blocks
+    fs->mkfs();
+    INode inode;
+    fs->im->read_inode(0,inode.data);
+    EXPECT_EQ(inode.itype, inode_type::DIRECTORY);
+    std::vector<bid_t> allocated_block_array;
+
+    auto nr = 10 + 512 + 512 * 7;
+    auto size = 0;
+    for(auto i=0;i<nr;i++) {
+        allocated_block_array.push_back(fs->new_dblock(inode));
+        if(allocated_block_array[i])
+            size++;
+        else
+        {
+            std::cout << i << std::endl;
+        }
+        
+    }
+    std::vector<bid_t> v = fs->read_dblock_index(inode,0,size);
+    for(auto i=0;i<nr;i++) {
+        if(allocated_block_array[i] != v[i]) {
+            std::cout << i << std::endl;
+        }
+        EXPECT_EQ(allocated_block_array[i],v[i]);
+    }
+}
