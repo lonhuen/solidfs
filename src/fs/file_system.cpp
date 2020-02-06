@@ -645,7 +645,9 @@ int FileSystem::unlink(iid_t id) {
     if(inode.links == 0) {
         truncate(id,0);
         im->free_inode(id);
+        return 0;
     } else {
         im->write_inode(id,inode.data);
+        return 1;
     }
 }
