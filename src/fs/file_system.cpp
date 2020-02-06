@@ -118,7 +118,7 @@ int FileSystem::write(iid_t id,const uint8_t* src,uint32_t size,uint32_t offset)
     im->read_inode(id,inode.data);
     std::vector<bid_t> allocated_blocks;
     if(offset + size > inode.block * BLOCK_SIZE) {
-        uint32_t nr_allocate_blocks = IDIV_BLOCK_SIZE(offset+size) - inode.block;
+        uint32_t nr_allocate_blocks = IDIV_BLOCK_SIZE(offset+size) > inode.block ?  IDIV_BLOCK_SIZE(offset+size) - inode.block : 0;
         allocated_blocks.reserve(nr_allocate_blocks);
         for(auto i=0;i<nr_allocate_blocks;i++){
             allocated_blocks.push_back(new_dblock(inode));
@@ -414,6 +414,141 @@ bid_t FileSystem::new_dblock(INode& inode) {
     }
     im->write_inode(inode.inode_number,inode.data);
     return allocate_block_array[nr_mblock];
+}
+
+// delete the last block
+// we will not maintain the size
+int FileSystem::delete_dblock(INode& inode) {
+    if(inode.block == 0) {
+        LOG(WARNING) << "freeing a non-exist data block for inode " << inode.inode_number;
+        return 0;
+    }
+
+    int ret = 0;
+
+    const bid_t factor = BLOCK_SIZE/sizeof(bid_t);
+    bid_t block_id = inode.block - 1;
+
+    bid_t free_block_array[4];
+    // 4 types, index-1, index-2, index-3
+    uint32_t index_array[4];
+    uint32_t flag_array[4];
+
+    // let's first do the translation
+    if(block_id < 10) {
+        // the first type -- direct lookup
+        index_array[0] = 0;
+        index_array[1] = block_id;
+    } else if (block_id < 10 + factor) {
+        auto tmp = block_id - 10;
+        // the second type -- 1-indirect lookup
+        index_array[0] = 1;
+        index_array[1] = tmp % factor;
+    } else if (block_id < 10 + factor + factor * factor) {
+        auto tmp = block_id - 10 - factor;
+        // the second type -- 2-indirect lookup
+        index_array[0] = 2;
+        index_array[1] = tmp / factor;
+        index_array[2] = tmp % factor;
+    } else {
+        auto tmp = block_id - 10 - factor - factor * factor;
+        // the second type -- 3-indirect lookup
+        index_array[0] = 3;
+        index_array[1] = tmp / factor / factor;
+        index_array[2] = (tmp / factor) % factor;
+        index_array[3] = tmp  % factor;
+    }
+
+    // let's decide how many blocks we are going to free
+
+    // TODO(lonhh) might optimize here
+    for(auto i=1;i<=index_array[0];i++) {
+        flag_array[i] = index_array[i];
+        for(auto j=i+1;j<=index_array[0];j++) {
+            flag_array[i] += index_array[j];
+        }
+    }
+
+    // # of blocks to be freed 
+    uint32_t nr_fblock = 1;
+    for(auto i=1;i<=index_array[0];i++) {
+        nr_fblock += (flag_array[i] == 0 ? 1 : 0);
+    }
+
+    // Let's free the blocks
+    // 1. the block field of inode and also the size
+    // 2. the mapping
+
+    inode.block--;
+
+    if(index_array[0] == 0) {
+        //ret = bm->free_dblock(inode.p_block[index_array[1]]);
+        free_block_array[0] = inode.p_block[index_array[1]];
+    } else if (index_array[0] == 1) {
+        // update the inode
+        auto i_fblock = 0;
+        if(flag_array[1] == 0) {
+            free_block_array[i_fblock] = inode.p_block[10];
+            i_fblock++;
+        }
+        // get the mapping block
+        Block bl;
+        bm->read_dblock(inode.p_block[10],bl.data);
+        free_block_array[i_fblock] = bl.bl_entry[index_array[1]];
+    } else if (index_array[0] == 2) {
+        // try to read inode.p_block[12] as the first level mapping bl1
+        auto i_fblock = 0;
+        if(flag_array[1] == 0) {
+            free_block_array[i_fblock] = inode.p_block[11];
+            i_fblock++;
+        }
+        Block bl1;
+        bm->read_dblock(inode.p_block[11],bl1.data);
+
+        // whether to free the 2-level mapping block
+        if(flag_array[2] == 0) {
+            free_block_array[i_fblock] = bl1.bl_entry[index_array[1]];
+            i_fblock++;
+        }
+        Block bl2;
+        bm->read_dblock(bl1.bl_entry[index_array[1]],bl2.data);
+        // allocate the data block
+        free_block_array[i_fblock] = bl2.bl_entry[index_array[2]];
+    } else {
+        // try to read inode.p_block[13] as the first level mapping bl1
+        auto i_fblock = 0;
+        if(flag_array[1] == 0) {
+            free_block_array[i_fblock] = inode.p_block[12];
+            i_fblock++;
+        }
+        Block bl1;
+        bm->read_dblock(inode.p_block[12],bl1.data);
+
+        // try to read bl1 entry[index_array[1]] as the second level mapping bl2
+        if(flag_array[2] == 0) {
+            free_block_array[i_fblock] = bl1.bl_entry[index_array[1]];
+            i_fblock++;
+        }
+        Block bl2;
+        bm->read_dblock(bl1.bl_entry[index_array[1]],bl2.data);
+        
+        // try to read bl2 entry[index_array[2]] as the third level mapping bl3
+        if(flag_array[3] == 0) {
+            free_block_array[i_fblock] =bl2.bl_entry[index_array[2]];
+            i_fblock++;
+        }
+        
+        // allocate the data block
+        Block bl3;
+        bm->read_dblock(bl2.bl_entry[index_array[2]],bl3.data);
+        free_block_array[i_fblock] =bl3.bl_entry[index_array[3]];
+    }
+    im->write_inode(inode.inode_number,inode.data);
+
+    for(auto i=0;i<=nr_fblock;i++) {
+        bm->free_dblock(free_block_array[i]);
+    }
+    return nr_fblock+1;
 }
 Directory FileSystem::read_directory(iid_t id) {
     INode inode;

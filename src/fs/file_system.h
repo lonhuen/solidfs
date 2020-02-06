@@ -24,6 +24,9 @@ public:
 
     int read(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset);
     int write(iid_t id,const uint8_t* src,uint32_t size,uint32_t offset);
+    
+    // todo
+    iid_t unlink(iid_t id);
 
     int path2iid(const std::string& path,iid_t* id);
     Directory read_directory(iid_t id);
@@ -31,13 +34,18 @@ public:
     
 
 //private:
-    // allocate a new datablock for inode, but shall we see the # of datablocks? yes we can
+    // allocate a new datablock for inode, but shall we see the index of datablocks? yes we can
     // most of the time we should write the file immediately after allocating a new block for it
     bid_t new_dblock(INode& inode);
+
+    // todo
+    int delete_dblock(INode& inode);
     // notice we only allocate a new inode, but we need to write it/init it
     iid_t new_inode(const std::string& file_name,INode& inode);
+
     Directory read_directory(INode& inode);
     int write_directory(INode& inode,Directory& dr);
+
     std::vector<bid_t> read_dblock_index(INode& inode,uint32_t begin,uint32_t end);
     uint32_t block_lookup_per_region(INode& inode,uint32_t begin,uint32_t end,std::vector<bid_t>& vec,int depth);
 };

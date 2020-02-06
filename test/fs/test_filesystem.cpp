@@ -247,7 +247,6 @@ TEST_F(FileSystemTest,WriteTest) {
         std::cout << inode.block << std::endl;
     });
 }
-*/
 
 TEST_F(FileSystemTest,DirectoryTest) {
     // initialization and read
@@ -298,4 +297,29 @@ TEST_F(FileSystemTest,NewINodeTest) {
     EXPECT_EQ(ret,1);
     dr.get_entry("etc",&ret);
     EXPECT_EQ(ret,1);
+}
+*/
+
+TEST_F(FileSystemTest,DeleteDBlockTest) {
+    fs->mkfs();
+    INode inode;
+    fs->im->read_inode(0,inode.data);
+    EXPECT_EQ(inode.itype, inode_type::DIRECTORY);
+    EXPECT_EQ(fs->bm->allocate_dblock(),12);
+    fs->bm->free_dblock(12);
+    std::vector<bid_t> allocated_block_array;
+
+    auto nr = 10 + 512 + 512 * 7;
+    auto size = 0;
+    for(auto i=0;i<nr;i++) {
+        allocated_block_array.push_back(fs->new_dblock(inode));
+        if(allocated_block_array[i])
+            size++;
+    }
+    auto s = 0;
+    for(auto i=0;i<nr;i++) {
+        s += fs->delete_dblock(inode);
+    }
+    EXPECT_EQ(inode.block,1);
+    EXPECT_EQ(s,nr);
 }
