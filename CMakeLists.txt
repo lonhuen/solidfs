@@ -7,7 +7,9 @@ endif ()
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
+
 set(ENABLE_TEST true)
+set(ENABLE_FUSE false)
 
 # http://rpg.ifi.uzh.ch/docs/glog.html
 
@@ -15,6 +17,13 @@ find_package(GLOG REQUIRED)
 include_directories(${GLOG_INCLUDE_DIR})
 set(ExtLibs ${ExtLibs} ${GLOG_LIBRARY})
 message(${GLOG_INCLUDE_DIR})
+
+if(${ENABLE_FUSE})
+  find_package(FUSE)
+  include_directories(${FUSE_INCLUDE_DIR})
+  set(ExtLibs ${ExtLibs} ${FUSE_LIBRARY})
+  message(${FUSE_INCLUDE_DIR})
+endif()
 
 if (${ENABLE_TEST})
   if (DEFINED ENV{GTEST_ROOT})
@@ -28,7 +37,7 @@ if (${ENABLE_TEST})
     message(STATUS "  GTest libraries: ${GTEST_BOTH_LIBRARIES}")
   endif ()
   include_directories(${GTEST_INCLUDE_DIRS})
-  set(ExtTestLibs ${ExtLibs} ${GTEST_BOTH_LIBRARIES})
+  set(ExtTestLibs ${ExtLibs} ${GTEST_BOTH_LIBRARIES} pthread)
 endif ()
 
 include_directories(./src)
@@ -38,6 +47,12 @@ add_library(Core STATIC ${SourceFiles})
 if (${ENABLE_TEST})
 file(GLOB_RECURSE TestFiles test/*.cpp)
 add_executable(CoreTests ${TestFiles})
-target_link_libraries(CoreTests Core ${ExtTestLibs} pthread)
+target_link_libraries(CoreTests Core ${ExtTestLibs})
+
+if (${ENABLE_FUSE})
+file(GLOB_RECURSE FuseFiles fuse/*.cpp)
+add_executable(solidFS ${FuseFiles})
+target_link_libraries(solidFS ${Core} ${ExtLibs})
+endif()
 
 endif ()
