@@ -35,7 +35,6 @@ TEST_F(FileSystemTest,InitTest) {
   EXPECT_EQ(inode.block, 1);
   fs->im->write_inode(0,inode.data);
 }
-
 /*
 TEST_F(FileSystemTest,ReadBlockIndexTest) {
     // first let's write to the root inode
@@ -116,6 +115,7 @@ TEST_F(FileSystemTest,ReadBlockIndexTest) {
         EXPECT_EQ(v[i-20],i);
     }
 }
+*/
 TEST_F(FileSystemTest,ReadTest) {
     // let's write the first 20 blocks
     fs->mkfs();
@@ -179,7 +179,7 @@ TEST_F(FileSystemTest,ReadTest) {
         }
     }
 }
-
+/*
 TEST_F(FileSystemTest,NewDBlockTest) {
     // fs->mkfs();
     // auto nr = 10 + 512 + 512 * 7;
@@ -216,7 +216,7 @@ TEST_F(FileSystemTest,NewDBlockTest) {
         EXPECT_EQ(allocated_block_array[i],v[i]);
     }
 }
-
+*/
 TEST_F(FileSystemTest,WriteTest) {
     fs->mkfs();
     std::vector<uint64_t> test_len_array;
@@ -243,8 +243,6 @@ TEST_F(FileSystemTest,WriteTest) {
         delete []dst;
         INode inode;
         fs->im->read_inode(0,inode.data);
-        std::cout << inode.size << std::endl;
-        std::cout << inode.block << std::endl;
     });
 }
 
@@ -346,12 +344,26 @@ TEST_F(FileSystemTest,DeleteDBlockTest) {
     EXPECT_EQ(s,size);
     // re-allocate datablocks again
 }
-*/
+TEST_F(FileSystemTest,UnlinkTest) {
+    fs->mkfs();
+    INode inode;
+    fs->im->read_inode(0,inode.data);
+    EXPECT_EQ(inode.itype, inode_type::DIRECTORY);
+    fs->unlink(0);
+    EXPECT_EQ(fs->im->allocate_inode(),0);
+    EXPECT_EQ(fs->bm->allocate_dblock(),11);
+}
 TEST_F(FileSystemTest,TruncateTest) {
     fs->mkfs();
     INode inode;
     fs->im->read_inode(0,inode.data);
     EXPECT_EQ(inode.itype, inode_type::DIRECTORY);
+
+    fs->truncate(0,BLOCK_SIZE);
+    fs->im->read_inode(0,inode.data);
+    EXPECT_EQ(inode.block, 1);
+    EXPECT_EQ(inode.size, BLOCK_SIZE);
+
     std::vector<bid_t> allocated_block_array;
 
     auto size = 0;

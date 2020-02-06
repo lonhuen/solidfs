@@ -27,7 +27,7 @@ public:
     int truncate(iid_t id, uint32_t size);
     
     // todo
-    iid_t unlink(iid_t id);
+    int unlink(iid_t id);
 
     int path2iid(const std::string& path,iid_t* id);
     Directory read_directory(iid_t id);

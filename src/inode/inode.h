@@ -34,6 +34,7 @@ struct INode{
     inode.itype = itype;
     inode.block = 0;
     inode.size = 0;
+    inode.links = 1;
     return std::move(inode);
   }
   
@@ -42,5 +43,6 @@ struct INode{
     inode.itype = itype;
     inode.block = 0;
     inode.size = 0;
+    inode.links = 1;
   }
 };

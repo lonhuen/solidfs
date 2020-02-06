@@ -624,6 +624,9 @@ int FileSystem::truncate(iid_t id, uint32_t size) {
         return ret;
     }
     uint32_t nr_free_blocks = inode.block - IDIV_BLOCK_SIZE(size) - 1;
+    if(MOD_BLOCK_SIZE(size) == 0) {
+        nr_free_blocks++;
+    }
     for(auto i=0;i<nr_free_blocks;i++) {
         delete_dblock(inode);
     }
@@ -632,5 +635,17 @@ int FileSystem::truncate(iid_t id, uint32_t size) {
     return 1;
 }
 
-iid_t FileSystem::unlink(iid_t id) {
+// return 0 if needs to free
+// return 1 ow
+int FileSystem::unlink(iid_t id) {
+    INode inode;
+    im->read_inode(id,inode.data);
+
+    inode.links--;
+    if(inode.links == 0) {
+        truncate(id,0);
+        im->free_inode(id);
+    } else {
+        im->write_inode(id,inode.data);
+    }
 }
