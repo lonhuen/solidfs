@@ -12,70 +12,72 @@
 
 FileSystem *fs;
 
-void *s_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
-    return NULL;
-}
+extern "C" {
 
-int s_open(const char *path, int info) { //struct fuse_file_info *info) {
-    iid_t id;
-    int p_res = fs->path2iid((const std::string)path, &id);
-    if (p_res == 0) {  // inode not found
-        LOG(ERROR) << "Cannot open file " << path;
-        return 0;
+    void *s_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
+        return NULL;
     }
 
-    info = (int) id;    // cache inode id
-    return 1;
-}
+    int s_open(const char *path, int info) { //struct fuse_file_info *info) {
+        iid_t id;
+        int p_res = fs->path2iid((const std::string)path, &id);
+        if (p_res == 0) {  // inode not found
+            LOG(ERROR) << "Cannot open file " << path;
+            return 0;
+        }
 
-int s_read(const char *path, char *buf, size_t size, off_t offset) {
- // struct fuse_file_info *info){
-    int info;
-    int res = s_open(path, info);
-    if (res == 0) {
-        LOG(ERROR) << "Cannot read file " << path;
-        return 0;
+        info = (int) id;    // cache inode id
+        return 1;
     }
 
-    iid_t id = (iid_t) info;
-    INode inode;
-    fs->im->read_inode(id, inode.data);
+    int s_read(const char *path, char *buf, size_t size, off_t offset) {
+        // struct fuse_file_info *info){
+        int info;
+        int res = s_open(path, info);
+        if (res == 0) {
+            LOG(ERROR) << "Cannot read file " << path;
+            return 0;
+        }
 
-    /*
-    // check if inode is a directory
-    if (inode.data.mode == DIRECTORY) {
-        LOG(ERROR) << "File is a directory " << path;
-        return 1
-    }
-    */
+        iid_t id = (iid_t) info;
+        INode inode;
+        fs->im->read_inode(id, inode.data);
+
+        /*
+        // check if inode is a directory
+        if (inode.data.mode == DIRECTORY) {
+            LOG(ERROR) << "File is a directory " << path;
+            return 0
+        }
+        */
     
-    return fs->read(id, (uint8_t *)buf, (uint32_t)size,(uint32_t)offset);
-}
+        return fs->read(id, (uint8_t *)buf, (uint32_t)size,(uint32_t)offset);
+    }
 
-int s_write(const char *path, const char *buf, size_t size, off_t offset) {
+    int s_write(const char *path, const char *buf, size_t size, off_t offset) {
             // struct fuse_file_info *info) {
-    int info;
-    int res = s_open(path, info);
-    if (res == 0) {
-        LOG(ERROR) << "Cannot read file " << path;
-        return 0;
-    }
+        int info;
+        int res = s_open(path, info);
+        if (res == 0) {
+            LOG(ERROR) << "Cannot read file " << path;
+            return 0;
+        }
 
-    iid_t id = (iid_t) info;
-    INode inode;
-    fs->im->read_inode(id, inode.data);
+        iid_t id = (iid_t) info;
+        INode inode;
+        fs->im->read_inode(id, inode.data);
 
-    /*                                                                         
-    // check if inode is a directory                                           
-    if (inode.data.mode == DIRECTORY) {                                        
-        LOG(ERROR) << "File is a directory " << path;                          
-        return 1                                                               
-    }                                                                          
-    */
+        /*                                                                         
+        // check if inode is a directory
+        if (inode.data.mode == DIRECTORY) {                                        
+            LOG(ERROR) << "File is a directory " << path;                          
+            return 0                                                               
+        }                                                                          
+        */
     
-    return fs->write(id, (const uint8_t *)buf,
-                     (uint32_t) size, (uint32_t) offset);
-}
+        return fs->write(id, (const uint8_t *)buf,
+                         (uint32_t) size, (uint32_t) offset);
+    }
 
 /*
 // list of file system function
@@ -93,6 +95,7 @@ struct fuse_operations s_oper = {
     // .rmdir = s_rmdir,
 };	
 */  
+}
   
 int main(int argc, char *argv[]) {
     fs = new FileSystem(10 + 512 + 512 * 512, 9);
@@ -127,4 +130,5 @@ int main(int argc, char *argv[]) {
     argument[argcount++] = r;
 
     return fuse_main(argcount, argument, &s_oper);
-} 
+}
+ 
