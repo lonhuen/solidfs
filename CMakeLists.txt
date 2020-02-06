@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
 set(ENABLE_TEST true)
-set(ENABLE_FUSE false)
+set(ENABLE_FUSE true)
 
 # http://rpg.ifi.uzh.ch/docs/glog.html
 
@@ -49,11 +49,10 @@ if (${ENABLE_TEST})
 file(GLOB_RECURSE TestFiles test/*.cpp)
 add_executable(CoreTests ${TestFiles})
 target_link_libraries(CoreTests Core ${ExtTestLibs})
+endif ()
 
 if (${ENABLE_FUSE})
 file(GLOB_RECURSE FuseFiles fuse/*.cpp)
 add_executable(solidFS ${FuseFiles})
-target_link_libraries(solidFS ${Core} ${ExtLibs})
+target_link_libraries(solidFS Core ${ExtLibs})
 endif()
-
-endif ()
