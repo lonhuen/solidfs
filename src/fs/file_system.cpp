@@ -335,8 +335,6 @@ bid_t FileSystem::new_dblock(INode& inode) {
                 bm->free_dblock(allocate_block_array[i]);
             }
         }
-        LOG(ERROR) << "Not getting enough data blocks for INode " 
-            << inode.inode_number << " (" << flag << "/" << nr_mblock+1 << ")";
         return 0;
     }
 
@@ -470,7 +468,7 @@ int FileSystem::delete_dblock(INode& inode) {
     }
 
     // # of blocks to be freed 
-    uint32_t nr_fblock = 1;
+    uint32_t nr_fblock = 0;
     for(auto i=1;i<=index_array[0];i++) {
         nr_fblock += (flag_array[i] == 0 ? 1 : 0);
     }
