@@ -10,9 +10,14 @@
 
 #include "fs/file_system.h"
 
-Filesystem *fs;
+FileSystem *fs;
 
-int s_open(const char *path, struct fuse_file_info *info) {
+static void *s_init(struct fuse_conn_info *conn) {
+    (void) conn;
+    return NULL;
+}
+
+static int s_open(const char *path, struct fuse_file_info *info) {
     iid_t id;
     int p_res = fs->path2iid((const std::string)path, &id);
     if (p_res == 0) {  // inode not found
@@ -24,17 +29,17 @@ int s_open(const char *path, struct fuse_file_info *info) {
     return 1;
 }
 
-int s_read(const char *path, char *buf, size_t size,
+static int s_read(const char *path, char *buf, size_t size,
            off_t offset, struct fuse_file_info *info){
     int res = s_open(path, info);
     if (res == 0) {
         LOG(ERROR) << "Cannot read file " << path;
-        return 0
+        return 0;
     }
 
     iid_t id = (iid_t) info->fh;
-    INODE inode;
-    fs->im.read_inode(id, inode.data);
+    INode inode;
+    fs->im->read_inode(id, inode.data);
 
     /*
     // check if inode is a directory
@@ -47,17 +52,17 @@ int s_read(const char *path, char *buf, size_t size,
     return fs->read(id, (uint8_t *)buf, (uint32_t)size,(uint32_t)offset);
 }
 
-int s_write(const char *path, const char *buf, size_t size, off_t offset,
+static int s_write(const char *path, const char *buf, size_t size, off_t offset,
             struct fuse_file_info *info) {
     int res = s_open(path, info);
     if (res == 0) {
         LOG(ERROR) << "Cannot read file " << path;
-        return 0
+        return 0;
     }
 
     iid_t id = (iid_t) info->fh;
-    INODE inode;
-    fs->im.read_inode(id, inode.data);
+    INode inode;
+    fs->im->read_inode(id, inode.data);
 
     /*                                                                         
     // check if inode is a directory                                           
@@ -71,11 +76,15 @@ int s_write(const char *path, const char *buf, size_t size, off_t offset,
                      (uint32_t) size, (uint32_t) offset);
 }
 
-// list of file system functions
+
+
+
+// list of file system function
 static struct fuse_operations s_oper = {
+    .init = s_init,
     .open = s_open,
     .read = s_read,
-    .write = .s_write,
+    .write = s_write,
     // .lseek = .s_lseek,
     // .unlink = s_unlink,
     // .opendir = s_opendir,
@@ -83,9 +92,10 @@ static struct fuse_operations s_oper = {
     // .mkdir = s_mkdir,
     // .readdir = s_readdir,
     // .rmdir = s_rmdir,
-};
-
+};	
+    
 int main(int argc, char *argv[]) {
+  fs = new FileSystem(10 + 512 + 512 * 512, 9);
   umask(0);
-  return fuse_main(argc, argv, &s_oper, NULL);
+  return fuse_main(argc, argv, &s_oper);
 } 

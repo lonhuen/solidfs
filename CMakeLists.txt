@@ -22,6 +22,7 @@ if(${ENABLE_FUSE})
   find_package(FUSE)
   include_directories(${FUSE_INCLUDE_DIR})
   set(ExtLibs ${ExtLibs} ${FUSE_LIBRARY})
+  set(CMAKE_CXX_FLAGS "-D_FILE_OFFSET_BITS=64")
   message(${FUSE_INCLUDE_DIR})
 endif()
 
