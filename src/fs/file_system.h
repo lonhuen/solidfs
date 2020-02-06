@@ -24,6 +24,7 @@ public:
 
     int read(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset);
     int write(iid_t id,const uint8_t* src,uint32_t size,uint32_t offset);
+    int truncate(iid_t id, uint32_t size);
     
     // todo
     iid_t unlink(iid_t id);
@@ -38,7 +39,7 @@ public:
     // most of the time we should write the file immediately after allocating a new block for it
     bid_t new_dblock(INode& inode);
 
-    // todo
+    // we don't modify the file size
     int delete_dblock(INode& inode);
     // notice we only allocate a new inode, but we need to write it/init it
     iid_t new_inode(const std::string& file_name,INode& inode);

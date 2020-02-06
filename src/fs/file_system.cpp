@@ -610,3 +610,27 @@ iid_t FileSystem::new_inode(const std::string& file_name,INode& inode) {
     im->read_inode(inode.inode_number,inode.data);
     return n_inode;
 }
+
+int FileSystem::truncate(iid_t id, uint32_t size) {
+    INode inode;
+    im->read_inode(id,inode.data);
+
+    // extend
+    if(size > inode.size) {
+        uint8_t* buffer = new uint8_t[size - inode.size];
+        std::memset(buffer,0,size-inode.size);
+        auto ret = write(id,buffer,size-inode.size,inode.size);
+        delete []buffer;
+        return ret;
+    }
+    uint32_t nr_free_blocks = inode.block - IDIV_BLOCK_SIZE(size) - 1;
+    for(auto i=0;i<nr_free_blocks;i++) {
+        delete_dblock(inode);
+    }
+    inode.size = size;
+    im->write_inode(id,inode.data);
+    return 1;
+}
+
+iid_t FileSystem::unlink(iid_t id) {
+}

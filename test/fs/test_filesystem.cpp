@@ -298,7 +298,6 @@ TEST_F(FileSystemTest,NewINodeTest) {
     dr.get_entry("etc",&ret);
     EXPECT_EQ(ret,1);
 }
-*/
 
 TEST_F(FileSystemTest,DeleteDBlockTest) {
     fs->mkfs();
@@ -335,6 +334,54 @@ TEST_F(FileSystemTest,DeleteDBlockTest) {
        fs->delete_dblock(inode);
     }
     EXPECT_EQ(inode.block,1);
+
+    auto s = 0;
+    while(1) {
+        if(fs->bm->allocate_dblock()) {
+            s++;
+        } else {
+            break;
+        }
+    }
+    EXPECT_EQ(s,size);
+    // re-allocate datablocks again
+}
+*/
+TEST_F(FileSystemTest,TruncateTest) {
+    fs->mkfs();
+    INode inode;
+    fs->im->read_inode(0,inode.data);
+    EXPECT_EQ(inode.itype, inode_type::DIRECTORY);
+    std::vector<bid_t> allocated_block_array;
+
+    auto size = 0;
+    auto i = 0;
+    while(1) {
+        allocated_block_array.push_back(fs->bm->allocate_dblock());
+        if(allocated_block_array[i]) {
+            size++;
+            i++;
+        }
+        else {
+            break;
+        }
+    }
+
+    std::for_each(allocated_block_array.begin(),allocated_block_array.end(),[&](auto p){
+        fs->bm->free_dblock(p);
+    });
+
+    while(1) {
+        if(!fs->new_dblock(inode)) {
+            break;
+        }
+    }
+
+    EXPECT_TRUE(inode.block!=1);
+    fs->truncate(0,1);
+    fs->im->read_inode(0,inode.data);
+    EXPECT_TRUE(inode.block==1);
+    EXPECT_TRUE(inode.size==1);
 
     auto s = 0;
     while(1) {
