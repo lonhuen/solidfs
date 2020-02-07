@@ -9,9 +9,9 @@
 class Directory {
     // unordered_map is more efficient for pure entity look up
     //std::unordered_map<std::string, int> entry_m;
-    iid_t id;
 
     public:
+    iid_t id;
     //TODO(lonhh): this should not be public
     std::unordered_map<std::string, iid_t> entry_m;
     Directory();

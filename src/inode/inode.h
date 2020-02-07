@@ -5,7 +5,7 @@
 #define DATA_PTR_COUNT 13
 
 enum inode_type {
-  FREE,DIRECTORY
+  FREE,DIRECTORY,REGULAR
 };
 
 // let's suppose that default empty value in p_block would be 0
@@ -35,6 +35,8 @@ struct INode{
     inode.block = 0;
     inode.size = 0;
     inode.links = 1;
+    inode.uid = 0;
+    inode.gid = 0;
     return std::move(inode);
   }
   
@@ -44,5 +46,7 @@ struct INode{
     inode.block = 0;
     inode.size = 0;
     inode.links = 1;
+    inode.uid = 0;
+    inode.gid = 0;
   }
 };

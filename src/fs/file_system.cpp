@@ -57,6 +57,9 @@ int FileSystem::path2iid(const std::string& path,iid_t* id) {
     //how to deal with errors
     *id = 0;
     std::string::size_type p1,p2;
+    if(path=="/") {
+        return 1;
+    }
     p2 = path.find('/');
     p1 = 0;
     while(std::string::npos != p2) {
@@ -70,6 +73,13 @@ int FileSystem::path2iid(const std::string& path,iid_t* id) {
         }
         p1 = p2 + 1;
         p2 = path.find('/',p1);
+    }
+    if(p1 != p2) {
+        Directory dr = read_directory(*id);
+        if(!dr.get_entry(path.substr(p1),id)) {
+            LOG(INFO) << "fail to translate the path " << path;
+            return 0;
+        }
     }
     return 1;
 }
