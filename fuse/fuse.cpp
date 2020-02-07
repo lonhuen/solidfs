@@ -159,11 +159,11 @@ extern "C" {
         return fs->unlink(id);
     }
 
-    int s_readdir(const char * path, void *buf, fuse_fill_dir_t filler
-                   off_t offset, struct fuse_file_into *fi, 
-                   num fuse_readdir_flags flags) {
-        void(flags);
-        void (offset);
+    int s_readdir(const char * path, void *buf, fuse_fill_dir_t filler,
+                  off_t offset, struct fuse_file_info *fi, 
+                  enum fuse_readdir_flags flags) {
+        (void) flags;
+        (void) offset;
 
         int res = s_open(path, fi);
         if (res == 0) {
@@ -183,13 +183,13 @@ extern "C" {
         }                                                                          
         */
 
-        Directory *dir = fs->read_directory(id);
-        for (auto entry : dir->entry_m) {
+        Directory dir = fs->read_directory(id);
+        for (auto entry : dir.entry_m) {
             struct stat st;
             memset(&st, 0, sizeof(st));
-            st.st_ino = dir->id;
+            st.st_ino = entry.second;
 
-            res = filler(buf, entry.first, &st, 0, 0);
+            res = filler(buf, entry.first.c_str(), &st, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS);
             if (res != 0) {
                 return res;
             }
@@ -197,9 +197,43 @@ extern "C" {
         return 0;
     }
 
-    
+    int mknod(const char *path, mode_t mode, dev_t dev) {
+        if (!S_INSREG(mode)) {
+            return -ENOTSUP;
+        }
+
+        // parse path
+        int idx = ((std::string) path).rfind('/');
+        std::string dir_path = ((std::string) path).substr(0, i);
+        std::string f_path = ((std::string) path).substr(i+1, s.length()-i-1);
+
+        // get dir
+        iid_t dir_id;
+        int res = path2iid(dir_path, &dir_id);
+        if (res == 0) {
+            LOG(ERROR) << "Cannot open directory path for mknod " << dir_path;
+            return -1;
+        }
+        Directory dir = fs->read_directory(dir_id);
+        
+        // get file
+        iid_t f_id;
+        res = path2iid(path, &f_id);
+        if (res == 0) {
+            LOG(ERROR) << "Cannot open file path for mknod " << path;
+            return -1;
+        } 
+        // update inode metadata
+        INode inode;
+        fs->im->read_inode(id, inode.data);
+        inode.data.mode = (uint32_t) mode;
+        // also should update device       
+            
+        return fs->write_directory(dir_id, dir);
+    }
 
 
+/*
     // list of file system function
     struct fuse_operations s_oper = {
         // .init = s_init,
@@ -216,7 +250,7 @@ extern "C" {
         .readdir = s_readdir,
         // .rmdir = s_rmdir,
     };	
-  
+*/
 }
   
 int main(int argc, char *argv[]) {
@@ -224,17 +258,17 @@ int main(int argc, char *argv[]) {
     fs = new FileSystem(10 + 512 + 512 * 512, 9);
     fs->mkfs();
 
-    /*
     fuse_operations s_oper;
     memset(&s_oper, 0, sizeof(s_oper));
 
-    // s_oper.init = &s_init;
+    // s_oper.init = s_init;
+    s_oper.getattr = s_getattr;
     s_oper.open = s_open;
     s_oper.read = s_read;
     s_oper.write = s_write;
+    s_oper.truncate = s_truncate;    
+    s_oper.unlink = s_unlink;
     s_oper.readdir= s_readdir;
-    s_oper.getattr= s_getattr;
-  */
 
     int argcount = 0;
     char *argument[12];
