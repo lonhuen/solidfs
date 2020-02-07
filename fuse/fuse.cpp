@@ -1,4 +1,4 @@
-#define FUSE_USE_VERSION 38
+#define FUSE_USE_VERSION 35
 #include <errno.h>
 #include <fcntl.h>
 #include <fuse.h>
