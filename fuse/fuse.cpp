@@ -24,17 +24,19 @@ extern "C" {
     //}
 
     int s_getattr(const char* path, struct stat* st, struct fuse_file_info *fi) {
+        LOG(INFO) << "getattr " << path;
         iid_t id;
         int p_res = fs->path2iid(path, &id);
         if (p_res == 0) {  // inode not found
-            LOG(ERROR) << "Cannot open file " << path;
-            return -ENODATA;
+            LOG(ERROR) << "Cannot getattr file " << path;
+            return -ENOENT;
         }
 		INode inode;
 		fs->im->read_inode(id,inode.data);
 
 		st->st_ino     = id;
 		st->st_mode    = inode.mode;
+        LOG(INFO) << "mode " << inode.mode;
 		st->st_nlink   = inode.links;
 		st->st_uid     = inode.uid;
 		st->st_gid     = inode.gid;
@@ -57,6 +59,7 @@ extern "C" {
 	}
 
     int s_open(const char* path, struct fuse_file_info* fi) {
+        LOG(INFO) << "open " << path;
         iid_t id;
         int p_res = fs->path2iid((const std::string)path, &id);
         if (p_res == 0) {  // inode not found
@@ -69,6 +72,7 @@ extern "C" {
 
     int s_read(const char *path, char *buf, size_t size, off_t offset,
                 struct fuse_file_info *fi) {
+        LOG(INFO) << "read " << path;
         int res = s_open(path, fi);
         if (res == -1) {
             LOG(ERROR) << "Cannot find file to read " << path;
@@ -91,6 +95,7 @@ extern "C" {
     }
 
     int s_write(const char *path, const char* buf, size_t size, off_t offset,struct fuse_file_info *fi) {
+        LOG(INFO) << "write " << path;
         int res = s_open(path, fi);
         if (res == -1) {
             LOG(ERROR) << "Cannot find file to read " << path;
@@ -113,6 +118,7 @@ extern "C" {
     }
 
     int s_truncate(const char *path, off_t offset, struct fuse_file_info *fi) {
+        LOG(INFO) << "truncate " << path;
         int res = s_open(path, fi);
         if (res == -1) {
             LOG(ERROR) << "Cannot find file to truncate " << path;
@@ -134,6 +140,7 @@ extern "C" {
     }
 
     int s_unlink(const char *path) {
+        LOG(INFO) << "unlink " << path;
         iid_t id;
         int p_res = fs->path2iid((const std::string)path, &id);
         if (p_res == 0) {  // inode not found
@@ -146,6 +153,7 @@ extern "C" {
     int s_readdir(const char * path, void *buf, fuse_fill_dir_t filler,
                   off_t offset, struct fuse_file_info *fi, 
                   enum fuse_readdir_flags flags) {
+        LOG(INFO) << "readdir " << path;
         int res = s_open(path, fi);
         if (res == -1) {
             LOG(ERROR) << "Cannot read file " << path;
@@ -179,6 +187,7 @@ extern "C" {
     }
 
     int s_mknod(const char *path, mode_t mode, dev_t dev) {
+        LOG(INFO) << "mknod " << path;
         //if (!S_INSREG(mode)) {
         //    return -ENOTSUP;
         //}
@@ -186,11 +195,17 @@ extern "C" {
         // parse path
         std::string p(path);
         std::size_t i = p.rfind('/');
-        std::string dir_path = p.substr(0, i);
+        std::string dir_path;
+        if(i == 0) {
+            dir_path = p.substr(0, 1);
+        } else {
+            dir_path = p.substr(0, i);
+        }
         std::string f_path = p.substr(i+1, p.length()-i-1);
 
         // get dir
         iid_t dir_id;
+        LOG(INFO) << "mknode dir path " << dir_path << " fpath " << f_path;
         int res = fs->path2iid(dir_path, &dir_id);
         if (res == 0) {
             LOG(ERROR) << "Cannot open directory path for mknod " << dir_path;
@@ -216,6 +231,7 @@ extern "C" {
     }
     int s_utimens(const char *path, const struct timespec ts[2],
 		       struct fuse_file_info *fi) {
+        LOG(INFO) << "utime " << path;
         std::string p(path);
         iid_t id;
         int res = fs->path2iid(p, &id);
@@ -227,6 +243,45 @@ extern "C" {
         inode.atime = ts[0].tv_nsec;
         inode.ctime = ts[1].tv_nsec;
         fs->im->write_inode(id,inode.data);
+        return 0;
+    }
+
+    int s_mkdir(const char* path, mode_t mode) {
+        LOG(INFO) << "mkdir " << path;
+        std::string s(path);
+        std::size_t i = s.rfind('/');
+        std::string dirname;
+        if(i == 0) {
+            dirname = s.substr(0, 1);
+        } else {
+            dirname = s.substr(0, i);
+        }
+        std::string filename(s,i+1,s.length()-i-1);
+        LOG(INFO) << "dirname " << dirname << " filename " << filename;
+
+                // get dir
+        iid_t dir_id;
+        int res = fs->path2iid(dirname, &dir_id);
+        if (res == 0) {
+            LOG(ERROR) << "Cannot open directory path for mkdir " << dirname;
+            return -1;
+        }
+
+        INode dir_inode;
+        fs->im->read_inode(dir_id,dir_inode.data);
+
+        // allocate a new inode for this dir 
+        iid_t f_id = fs->new_inode(filename,dir_inode);
+        if (f_id == 0) {
+            LOG(ERROR) << "Cannot allocate a new inode " << path;
+            return -1;
+        } 
+        // update inode metadata
+        INode inode = INode::get_inode(f_id,inode_type::DIRECTORY);
+        inode.mode = mode;
+        // dev??
+        //inode.dev
+        fs->im->write_inode(f_id,inode.data);
         return 0;
     }
 }
@@ -248,6 +303,8 @@ int main(int argc, char *argv[]) {
     s_oper.unlink = s_unlink;
     s_oper.readdir= s_readdir;
     s_oper.utimens= s_utimens;
+    s_oper.mkdir = s_mkdir;
+    s_oper.mknod = s_mknod;
 
     int argcount = 0;
     char *argument[12];
