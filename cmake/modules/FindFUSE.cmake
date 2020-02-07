@@ -25,9 +25,9 @@ if (APPLE)
     HINTS ${HINT_DIR}
   )
 else (APPLE)
-  set(HINT_DIR ${FUSE_ROOT}/build/lib)
+  set(HINT_DIR ${FUSE_ROOT}/lib)
   find_library(FUSE_LIBRARY
-    NAMES libfuse.so
+    NAMES libfuse3.so
     HINTS ${HINT_DIR}
   )
 endif(APPLE)

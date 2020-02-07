@@ -1,3 +1,4 @@
+#define FUSE_USE_VERSION 38
 #include <errno.h>
 #include <fcntl.h>
 #include <fuse.h>
@@ -14,36 +15,41 @@ FileSystem *fs;
 
 extern "C" {
 
-    void *s_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
-        return NULL;
-    }
+    //void*s_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
+    //    return NULL;
+    //}
+    int s_getattr(const char* path, struct stat* st, struct fuse_file_info *fi) {
 
-    int s_open(const char *path, int info) { //struct fuse_file_info *info) {
+    }
+    int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset,
+            struct fuse_file_info *fi, enum fuse_readdir_flags flags) {
+        filler(buf, ".", NULL, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS);
+        filler(buf, "..", NULL, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS);
+        filler(buf, "test", NULL, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS);
+    }
+    int s_open(const char* path, struct fuse_file_info* fi) {
         iid_t id;
         int p_res = fs->path2iid((const std::string)path, &id);
         if (p_res == 0) {  // inode not found
             LOG(ERROR) << "Cannot open file " << path;
             return 0;
         }
-
-        info = (int) id;    // cache inode id
+        fi->fh = id;    // cache inode id
         return 1;
     }
-
-    int s_read(const char *path, char *buf, size_t size, off_t offset) {
-        // struct fuse_file_info *info){
-        int info;
-        int res = s_open(path, info);
+    int s_read(const char *path, char *buf, size_t size, off_t offset,
+                struct fuse_file_info *fi) {
+        int res = s_open(path, fi);
         if (res == 0) {
             LOG(ERROR) << "Cannot read file " << path;
             return 0;
         }
 
-        iid_t id = (iid_t) info;
+        iid_t id = (iid_t) fi->fh;
+        /*
         INode inode;
         fs->im->read_inode(id, inode.data);
 
-        /*
         // check if inode is a directory
         if (inode.data.mode == DIRECTORY) {
             LOG(ERROR) << "File is a directory " << path;
@@ -54,20 +60,17 @@ extern "C" {
         return fs->read(id, (uint8_t *)buf, (uint32_t)size,(uint32_t)offset);
     }
 
-    int s_write(const char *path, const char *buf, size_t size, off_t offset) {
-            // struct fuse_file_info *info) {
-        int info;
-        int res = s_open(path, info);
+    int s_write(const char *path, const char* buf, size_t size, off_t offset,struct fuse_file_info *fi) {
+        int res = s_open(path, fi);
         if (res == 0) {
             LOG(ERROR) << "Cannot read file " << path;
             return 0;
         }
 
-        iid_t id = (iid_t) info;
+        iid_t id = (iid_t) fi->fh;
+        /*                                                                         
         INode inode;
         fs->im->read_inode(id, inode.data);
-
-        /*                                                                         
         // check if inode is a directory
         if (inode.data.mode == DIRECTORY) {                                        
             LOG(ERROR) << "File is a directory " << path;                          
@@ -105,9 +108,9 @@ int main(int argc, char *argv[]) {
     memset(&s_oper, 0, sizeof(s_oper));
 
     // s_oper.init = &s_init;
-    s_oper.open = &s_open;
-    s_oper.read = &s_read;
-    s_oper.write = &s_write;
+    s_oper.open = s_open;
+    s_oper.read = s_read;
+    s_oper.write = s_write;
   
     int argcount = 0;
     char *argument[12];
@@ -129,6 +132,6 @@ int main(int argc, char *argv[]) {
     argument[argcount++] = o;
     argument[argcount++] = r;
 
-    return fuse_main(argcount, argument, &s_oper);
+    return fuse_main(argcount, argument, &s_oper,0);
 }
  
