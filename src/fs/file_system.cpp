@@ -51,32 +51,35 @@ void FileSystem::mkfs() {
     im->write_inode(0,inode.data);
 }
 
+std::vector<std::string> FileSystem::parse_path(const std::string& path){
+    // taken from https://stackoverflow.com/questions/909289/splitting-a-string
+    typedef std::string::const_iterator iter;
+    iter beg = path.begin();
+    std::vector<std::string> tokens;
+
+    while(beg != path.end()) {
+        //cout << ":" << beg._Myptr << ":" << endl;
+        iter temp = std::find(beg, path.end(), '/');
+        if(beg != path.end())
+            tokens.push_back(std::string(beg, temp));
+        beg = temp;
+        while ((beg != path.end()) && (*beg == '/'))
+            beg++;
+    }
+    return tokens;
+}
 int FileSystem::path2iid(const std::string& path,iid_t* id) {
     //suppose that the root inode is 0
     //also suppose that the path would always be "/xxx/xx////xxx"
     //how to deal with errors
     *id = 0;
-    std::string::size_type p1,p2;
     if(path=="/") {
         return 1;
     }
-    p2 = path.find('/');
-    p1 = 0;
-    while(std::string::npos != p2) {
-        if((p1 != p2)) {
-            Directory dr = read_directory(*id);
-            // if there not exists
-            if(!dr.get_entry(path.substr(p1,p2-p1),id)) {
-                LOG(INFO) << "fail to translate the path " << path;
-                return 0;
-            }
-        }
-        p1 = p2 + 1;
-        p2 = path.find('/',p1);
-    }
-    if(p1 != p2) {
+    std::vector<std::string> v=parse_path(path);
+    for(auto p=v.begin()+1;p!=v.end();p++) {
         Directory dr = read_directory(*id);
-        if(!dr.get_entry(path.substr(p1),id)) {
+        if(!dr.get_entry(*p,id)) {
             LOG(INFO) << "fail to translate the path " << path;
             return 0;
         }

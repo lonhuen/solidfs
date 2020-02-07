@@ -32,7 +32,8 @@ public:
     int path2iid(const std::string& path,iid_t* id);
     Directory read_directory(iid_t id);
     int write_directory(iid_t id,Directory& dr);
-    
+
+    std::vector<std::string> parse_path(const std::string& path);
 
 //private:
     // allocate a new datablock for inode, but shall we see the index of datablocks? yes we can
