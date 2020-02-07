@@ -79,7 +79,11 @@ extern "C" {
             return -1;
         }
 
-        iid_t id = (iid_t) fi->fh;
+        iid_t id;
+        if(fi)
+            id = fi->fh;
+        else
+            fs->path2iid(path,&id);
         /*
         INode inode;
         fs->im->read_inode(id, inode.data);
@@ -91,6 +95,7 @@ extern "C" {
         }
         */
     
+        LOG(INFO) << "read " << path;
         return fs->read(id, (uint8_t *)buf, (uint32_t)size,(uint32_t)offset);
     }
 
@@ -102,7 +107,11 @@ extern "C" {
             return -1;
         }
 
-        iid_t id = (iid_t) fi->fh;
+        iid_t id;
+        if(fi)
+            id = fi->fh;
+        else
+            fs->path2iid(path,&id);
         /*                                                                         
         INode inode;
         fs->im->read_inode(id, inode.data);
@@ -112,7 +121,7 @@ extern "C" {
             return 0                                                               
         }                                                                          
         */
-    
+        LOG(INFO) << "write " << buf << " to file " << path; 
         return fs->write(id, (const uint8_t *)buf,
                          (uint32_t) size, (uint32_t) offset);
     }
@@ -134,8 +143,12 @@ extern "C" {
             return 0                                                               
         }                                                                          
         */
+        iid_t id;
+        if(fi)
+            id = fi->fh;
+        else
+            fs->path2iid(path,&id);
 
-        iid_t id = (iid_t) fi->fh;
         return fs->truncate(id, (uint32_t) offset)-1; // return 0 if success   
     }
 

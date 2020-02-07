@@ -101,7 +101,7 @@ int FileSystem::read(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset) {
     }
     // the number of blocks to read
     uint32_t s_index = IDIV_BLOCK_SIZE(offset);
-    uint32_t e_index = IDIV_BLOCK_SIZE(offset+size) + 1;
+    uint32_t e_index = (MOD_BLOCK_SIZE(offset+size) == 0) ? IDIV_BLOCK_SIZE(offset+size) : IDIV_BLOCK_SIZE(offset+size) + 1;
     uint32_t nr_blocks = e_index - s_index;
     std::vector<bid_t> blockid_arrays = read_dblock_index(inode,s_index,e_index);
 
@@ -125,13 +125,15 @@ int FileSystem::read(iid_t id,uint8_t* dst,uint32_t size,uint32_t offset) {
 
 int FileSystem::write(iid_t id,const uint8_t* src,uint32_t size,uint32_t offset) {
     // first judge whether we need to allocate more blocks
-
+    LOG(INFO) << "writing " << src;
     // TODO(lonhh) whether we can batch the allocating??
     INode inode;
     im->read_inode(id,inode.data);
     std::vector<bid_t> allocated_blocks;
     if(offset + size > inode.block * BLOCK_SIZE) {
-        uint32_t nr_allocate_blocks = IDIV_BLOCK_SIZE(offset+size) > inode.block ?  IDIV_BLOCK_SIZE(offset+size) - inode.block : 0;
+        // the last block index [)
+        uint32_t nr_allocate_blocks = (MOD_BLOCK_SIZE(offset+size) == 0) ? IDIV_BLOCK_SIZE(offset+size) : IDIV_BLOCK_SIZE(offset+size) + 1;
+        nr_allocate_blocks = nr_allocate_blocks - inode.block;
         allocated_blocks.reserve(nr_allocate_blocks);
         for(auto i=0;i<nr_allocate_blocks;i++){
             allocated_blocks.push_back(new_dblock(inode));
@@ -157,7 +159,7 @@ int FileSystem::write(iid_t id,const uint8_t* src,uint32_t size,uint32_t offset)
 
     // the number of blocks to write
     uint32_t s_index = IDIV_BLOCK_SIZE(offset);
-    uint32_t e_index = IDIV_BLOCK_SIZE(offset+size) + 1;
+    uint32_t e_index = (MOD_BLOCK_SIZE(offset+size) == 0) ? IDIV_BLOCK_SIZE(offset+size) : IDIV_BLOCK_SIZE(offset+size) + 1;
     uint32_t nr_blocks = e_index - s_index;
     
     // don't count the just-allocated blocks
