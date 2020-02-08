@@ -70,25 +70,25 @@ namespace solid {
         }
         return tokens;
     }
-    int FileSystem::path2iid(const std::string& path,INodeID* id) {
+    INodeID FileSystem::path2iid(const std::string& path) {
         //suppose that the root inode is 0
         //also suppose that the path would always be "/xxx/xx////xxx"
         //how to deal with errors
-        *id = 0;
+        auto ret = 0;
         if(path=="/") {
-            return 1;
+            return 0;
         }
         std::vector<std::string> v=parse_path(path);
         for(auto p=v.begin()+1;p!=v.end();p++) {
-            Directory dr = read_directory(*id);
+            Directory dr = read_directory(ret);
             try {
-                *id = dr.get_entry(*p);
+                ret = dr.get_entry(*p);
             } catch(const fs_exception& e) {
-                LOG(INFO) << "fail to translate the path " << path;
-                return 0;
+                LOG(INFO) << "path doesn't exist: " << path;
+                throw fs_exception("path doesn't exist ",path);
             }
         }
-        return 1;
+        throw fs_exception("path2iid: should not reach here",path);
     }
 
     int FileSystem::read(INodeID id,uint8_t* dst,uint32_t size,uint32_t offset) {

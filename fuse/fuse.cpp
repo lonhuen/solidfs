@@ -17,6 +17,15 @@
 
 FileSystem *fs;
 
+static bool existException(std::function<void(void)> f) {
+    try {
+        f();
+    } catch (const fs_exception& e) {
+        return true;
+    }
+    return false;
+};
+
 extern "C" {
 
     //void*s_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
@@ -25,19 +34,18 @@ extern "C" {
 
     int s_getattr(const char* path, struct stat* st, struct fuse_file_info *fi) {
         LOG(INFO) << "getattr " << path;
-        iid_t id;
-        int p_res = fs->path2iid(path, &id);
-        LOG(INFO) << "get attr inode " << id;
-        if (p_res == 0) {  // inode not found
-            LOG(ERROR) << "Cannot getattr file " << path;
+
+        INodeID id;
+        if (existException([&][]{
+            id = fs->path2iid(path, &id);
+        })) {
+            LOG(ERROR) << "file not exists" << path;
             return -ENOENT;
         }
-		INode inode;
-		fs->im->read_inode(id,inode.data);
+		INode inode = fs->im->read_inode(id);
 
 		st->st_ino     = id;
 		st->st_mode    = inode.mode;
-        LOG(INFO) << "mode " << inode.mode;
 		st->st_nlink   = inode.links;
 		st->st_uid     = inode.uid;
 		st->st_gid     = inode.gid;
@@ -61,11 +69,13 @@ extern "C" {
 
     int s_open(const char* path, struct fuse_file_info* fi) {
         LOG(INFO) << "open " << path;
-        iid_t id;
-        int p_res = fs->path2iid((const std::string)path, &id);
-        if (p_res == 0) {  // inode not found
-            LOG(ERROR) << "Cannot open file " << path;
-            return -1;
+        
+        INodeID id;
+        if (existException([&][]{
+            id = fs->path2iid(path, &id);
+        })) {
+            LOG(ERROR) << "file not exists" << path;
+            return -ENOENT;
         }
         fi->fh = id;    // cache inode id
         return 0;
@@ -74,29 +84,13 @@ extern "C" {
     int s_read(const char *path, char *buf, size_t size, off_t offset,
                 struct fuse_file_info *fi) {
         LOG(INFO) << "read " << path;
+        
         int res = s_open(path, fi);
-        if (res == -1) {
-            LOG(ERROR) << "Cannot find file to read " << path;
-            return -1;
+        if (res != 0) {
+            return res;
         }
 
-        iid_t id;
-        if(fi)
-            id = fi->fh;
-        else
-            fs->path2iid(path,&id);
-        /*
-        INode inode;
-        fs->im->read_inode(id, inode.data);
-
-        // check if inode is a directory
-        if (inode.data.mode == DIRECTORY) {
-            LOG(ERROR) << "File is a directory " << path;
-            return 0
-        }
-        */
-    
-        LOG(INFO) << "read " << path;
+        iid_t id = fi->fh;
         return fs->read(id, (uint8_t *)buf, (uint32_t)size,(uint32_t)offset);
     }
 
@@ -104,58 +98,30 @@ extern "C" {
                 struct fuse_file_info *fi) {
         LOG(INFO) << "write " << path;
         int res = s_open(path, fi);
-        if (res == -1) {
-            LOG(ERROR) << "Cannot find file to read " << path;
-            return -1;
+        if (res != 0) {
+            return res;
         }
 
-        iid_t id;
-        if(fi)
-            id = fi->fh;
-        else
-            fs->path2iid(path,&id);
-        /*                                                                         
-        INode inode;
-        fs->im->read_inode(id, inode.data);
-        // check if inode is a directory
-        if (inode.data.mode == DIRECTORY) {                                        
-            LOG(ERROR) << "File is a directory " << path;                          
-            return 0                                                               
-        }                                                                          
-        */
-        LOG(INFO) << "write " << buf << " to file " << path; 
+        iid_t id = fi->fh;
         return fs->write(id, (const uint8_t *)buf,
                          (uint32_t) size, (uint32_t) offset);
     }
 
     int s_truncate(const char *path, off_t offset, struct fuse_file_info *fi) {
         LOG(INFO) << "truncate " << path;
+        
         int res = s_open(path, fi);
-        if (res == -1) {
-            LOG(ERROR) << "Cannot find file to truncate " << path;
-            return -1;
+        if (res != 0) {
+            return res;
         }
 
-        /*                                                                         
-        INode inode;
-        fs->im->read_inode(id, inode.data);
-        // check if inode is a directory
-        if (inode.data.mode == DIRECTORY) {                                        
-            LOG(ERROR) << "File is not a directory " << path;                          
-            return 0                                                               
-        }                                                                          
-        */
-        iid_t id;
-        if(fi)
-            id = fi->fh;
-        else
-            fs->path2iid(path,&id);
-
+        iid_t id = fi->fh;
         return fs->truncate(id, (uint32_t) offset)-1; // return 0 if success   
     }
 
     int s_unlink(const char *path) {
         LOG(INFO) << "unlink " << path;
+
         std::string p(path);
         std::size_t i = p.rfind('/');
         std::string dir_path;

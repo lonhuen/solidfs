@@ -29,7 +29,7 @@ namespace solid {
         int truncate(INodeID id, uint32_t size);
         int unlink(INodeID id);
 
-        int path2iid(const std::string& path,INodeID* id);
+        INodeID path2iid(const std::string& path);
         Directory read_directory(INodeID id);
         int write_directory(INodeID id,Directory& dr);
 
