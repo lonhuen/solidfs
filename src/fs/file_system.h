@@ -31,7 +31,7 @@ namespace solid {
 
         INodeID path2iid(const std::string& path);
         Directory read_directory(INodeID id);
-        int write_directory(INodeID id,Directory& dr);
+        void write_directory(INodeID id,Directory& dr);
 
         std::vector<std::string> parse_path(const std::string& path);
 
@@ -46,9 +46,13 @@ namespace solid {
         INodeID new_inode(const std::string& file_name,INode& inode);
 
         Directory read_directory(INode& inode);
-        int write_directory(INode& inode,Directory& dr);
+        void write_directory(INode& inode,Directory& dr);
 
         std::vector<BlockID> read_dblock_index(INode& inode,uint32_t begin,uint32_t end);
         uint32_t block_lookup_per_region(INode& inode,uint32_t begin,uint32_t end,std::vector<BlockID>& vec,int depth);
+
+        std::string simplifyPath(std::string path);
+        std::string directory_name(std::string path);
+        std::string file_name(std::string path);
     };
 };

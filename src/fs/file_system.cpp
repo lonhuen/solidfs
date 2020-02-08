@@ -1,5 +1,7 @@
 #include <iostream>
 #include <algorithm>
+#include <sstream>
+#include <stack>
 #include "fs/file_system.h"
 #include "storage/memory_storage.h"
 #include "block/freelist_blockmanager.h"
@@ -70,14 +72,16 @@ namespace solid {
         }
         return tokens;
     }
-    INodeID FileSystem::path2iid(const std::string& path) {
+    INodeID FileSystem::path2iid(const std::string& npath) {
         //suppose that the root inode is 0
         //also suppose that the path would always be "/xxx/xx////xxx"
         //how to deal with errors
         auto ret = 0;
-        if(path=="/") {
+        if(npath=="/") {
             return 0;
         }
+        std::string path(npath);
+        path = simplifyPath(path);
         std::vector<std::string> v=parse_path(path);
         for(auto p=v.begin()+1;p!=v.end();p++) {
             Directory dr = read_directory(ret);
@@ -551,9 +555,9 @@ namespace solid {
         INode inode = im->read_inode(id);
         return std::move(read_directory(inode));
     }
-    int FileSystem::write_directory(INodeID id,Directory& dr) {
+    void FileSystem::write_directory(INodeID id,Directory& dr) {
         INode inode = im->read_inode(id);
-        return (write_directory(inode,dr));
+        write_directory(inode,dr);
     }
 
     Directory FileSystem::read_directory(INode& inode) {
@@ -567,7 +571,7 @@ namespace solid {
         return std::move(dr);
     }
 
-    int FileSystem::write_directory(INode& inode,Directory& dr) {
+    void FileSystem::write_directory(INode& inode,Directory& dr) {
         // suppose that one block will be enough, if not allocate one more block 
         // fisrt serialize
         auto i = 1;
@@ -585,7 +589,8 @@ namespace solid {
             delete []buffer;
             break;
         }
-        return 1;
+        if(i >= 10)
+            throw fs_exception("write_directory failed",inode.inode_number);
     }
 
     INodeID FileSystem::new_inode(const std::string& file_name,INode& inode) {
@@ -647,4 +652,51 @@ namespace solid {
         }
     }
 
+    // taken from https://leetcode.com/problems/simplify-path/discuss/25687/C%2B%2B-using-stack
+    std::string FileSystem::simplifyPath(std::string path) {
+        std::string res, s;
+        std::stack<std::string>stk;
+        std::stringstream ss(path);
+        while(std::getline(ss, s, '/')) {
+            if (s == "" || s == ".") continue;
+            if (s == ".." && !stk.empty()) stk.pop();
+            else if (s != "..") stk.push(s);
+        }
+        while(!stk.empty()){
+            res = "/"+ stk.top() + res;
+            stk.pop();
+        }
+        return res.empty() ? "/" : res;
+    }
+    
+    std::string FileSystem::directory_name(std::string path) {
+        std::string res, s;
+        std::stack<std::string>stk;
+        std::stringstream ss(path);
+        while(std::getline(ss, s, '/')) {
+            if (s == "" || s == ".") continue;
+            if (s == ".." && !stk.empty()) stk.pop();
+            else if (s != "..") stk.push(s);
+        }
+        if(!stk.empty())
+            stk.pop();
+        while(!stk.empty()){
+            res = "/"+ stk.top() + res;
+            stk.pop();
+        }
+        return res.empty() ? "/" : res;
+    }
+    std::string FileSystem::file_name(std::string path) {
+        std::string s;
+        std::stack<std::string>stk;
+        std::stringstream ss(path);
+        while(std::getline(ss, s, '/')) {
+            if (s == "" || s == ".") continue;
+            if (s == ".." && !stk.empty()) stk.pop();
+            else if (s != "..") stk.push(s);
+        }
+        if(!stk.empty())
+            return stk.top();
+        return "/";
+    }
 };
