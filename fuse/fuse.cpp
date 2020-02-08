@@ -10,12 +10,17 @@
 #include <unistd.h>
 #include <unordered_map>
 #include <algorithm>
+#include <functional>
 
 #include "fs/file_system.h"
 #include "inode/inode.h"
 #include "directory/directory.h"
+#include "utils/fs_exception.h"
 
+
+using namespace solid;
 FileSystem *fs;
+
 
 static bool existException(std::function<void(void)> f) {
     try {
@@ -37,8 +42,8 @@ extern "C" {
         LOG(INFO) << "getattr " << path;
 
         INodeID id;
-        if (existException([&][]{
-            id = fs->path2iid(path, &id);
+        if (existException([&](){
+            id = fs->path2iid(path);
         })) {
             LOG(ERROR) << "file not exists" << path;
             return -ENOENT;
@@ -72,8 +77,8 @@ extern "C" {
         LOG(INFO) << "open " << path;
         
         INodeID id;
-        if (existException([&][]{
-            id = fs->path2iid(path, &id);
+        if (existException([&](){
+            id = fs->path2iid(path);
         })) {
             LOG(ERROR) << "file not exists" << path;
             return -ENOENT;
@@ -91,7 +96,7 @@ extern "C" {
             return res;
         }
 
-        iid_t id = fi->fh;
+        INodeID id = fi->fh;
         return fs->read(id, (uint8_t *)buf, (uint32_t)size,(uint32_t)offset);
     }
 
@@ -103,7 +108,7 @@ extern "C" {
             return res;
         }
 
-        iid_t id = fi->fh;
+        INodeID id = fi->fh;
         return fs->write(id, (const uint8_t *)buf,
                          (uint32_t) size, (uint32_t) offset);
     }
@@ -116,7 +121,7 @@ extern "C" {
             return res;
         }
 
-        iid_t id = fi->fh;
+        INodeID id = fi->fh;
         return fs->truncate(id, (uint32_t) offset)-1; // return 0 if success   
     }
 
@@ -128,8 +133,8 @@ extern "C" {
         std::string f_name = fs->file_name(p);
 
         INodeID dir_id;
-        if (existException([&][]{
-            dir_id = fs->path2iid(dir_path);
+        if (existException([&](){
+            dir_id = fs->path2iid(dir_name);
         })) {
             LOG(ERROR) << "directory not exists" << dir_name;
             return -ENOENT;
@@ -137,15 +142,15 @@ extern "C" {
 
         INodeID f_id;
         Directory dr = fs->read_directory(dir_id);
-        if (existException([&][]{
-            f_id = dr.get_ntry(f_path);
+        if (existException([&](){
+            f_id = dr.get_entry(f_name);
         })) {
             LOG(ERROR) << "file not exists" << f_name;
             return -ENOENT;
         }
-        dr.remove_entry(f_path);
-        fs->write_directory(dir_id,dr));
-        return fs->unlink(id);
+        dr.remove_entry(f_name);
+        fs->write_directory(dir_id,dr);
+        return fs->unlink(f_id);
     }
     
     int s_readdir(const char * path, void *buf, fuse_fill_dir_t filler,
@@ -185,8 +190,8 @@ extern "C" {
 
         // get dir
         INodeID dir_id;
-        if (existException([&][]{
-            dir_id = fs->path2iid(dir_path);
+        if (existException([&](){
+            dir_id = fs->path2iid(dir_name);
         })) {
             LOG(ERROR) << "directory not exists" << dir_name;
             return -ENOENT;
@@ -195,7 +200,7 @@ extern "C" {
         INode dir_inode = fs->im->read_inode(dir_id);
 
         // allocate a new inode for this file
-        INodeID f_id = fs->new_inode(f_path,dir_inode);
+        INodeID f_id = fs->new_inode(f_name,dir_inode);
         if (f_id == 0) {
             LOG(ERROR) << "Cannot allocate a new inode " << path;
             return -1;
@@ -214,10 +219,10 @@ extern "C" {
         LOG(INFO) << "utime " << path;
         
         INodeID id;
-        if (existException([&][]{
+        if (existException([&](){
             id = fs->path2iid(path);
         })) {
-            LOG(ERROR) << "file not exists" << patht;
+            LOG(ERROR) << "file not exists" << path;
             return -ENOENT;
         }
         
@@ -234,19 +239,18 @@ extern "C" {
         std::string dir_name = fs->directory_name(p);
         std::string f_name = fs->file_name(p);
 
-        Directory dr = fs->read_directory(dir_id);
         INodeID dir_id;
-        if (existException([&][]{
-            dir_id = fs->path2iid(dir_path);
+        if (existException([&](){
+            dir_id = fs->path2iid(dir_name);
         })) {
             LOG(ERROR) << "directory not exists" << dir_name;
             return -ENOENT;
         }
-
+        
         INode dir_inode = fs->im->read_inode(dir_id);
 
         // allocate a new inode for this dir 
-        INodeID f_id = fs->new_inode(filename,dir_inode);
+        INodeID f_id = fs->new_inode(f_name,dir_inode);
         if (f_id == 0) {
             LOG(ERROR) << "Cannot allocate a new inode " << path;
             return -1;
@@ -254,7 +258,7 @@ extern "C" {
         // update inode metadata
         INode inode = INode::get_inode(f_id,INodeType::DIRECTORY);
         inode.mode = mode;
-        fs->im->write_inode(f_id,inode.data);
+        fs->im->write_inode(f_id,inode);
         //update directory
         Directory dr(f_id,dir_id);
         fs->write_directory(f_id,dr);
@@ -266,7 +270,7 @@ extern "C" {
     int s_rmdir(const char *path) {
         LOG(INFO) << "rmdir " << path;
         INodeID id;
-        if (existException([&][]{
+        if (existException([&](){
             id = fs->path2iid(path);
         })) {
             LOG(ERROR) << "directory not exists" << path;
