@@ -4,22 +4,21 @@
 #include "inode/inode.h"
 #include "storage/storage.h"
 
-// let's say we won't modify the super block
-class INodeManager {
+namespace solid {
+    class INodeManager {
     private:
-        // s_iblock is the starting block id of inode list
-        bid_t s_iblock;
-        // s_iblock is the number of blocks of inode list
-        bid_t nr_iblock;
-        Storage* p_storage;
+        BlockID s_iblock;
+        BlockID nr_iblock;
+        Storage* storage;
 
     public:
-        const static uint32_t nr_iblock_PER_BLOCK = BLOCK_SIZE/sizeof(INode);
+        const static uint32_t nr_inode_per_block = config::block_size/sizeof(INode);
 
-        INodeManager(Storage* p_storage);
+        INodeManager(Storage* storage);
         virtual void mkfs();
-        virtual int read_inode(iid_t id, uint8_t *dst);
-        virtual int write_inode(iid_t id, const uint8_t *dst);
-        virtual iid_t allocate_inode();
-        virtual int free_inode(iid_t id);
+        virtual INode read_inode(INodeID id);
+        virtual void write_inode(INodeID id, const INode& src);
+        virtual INodeID allocate_inode();
+        virtual void free_inode(INodeID id);
+    };
 };

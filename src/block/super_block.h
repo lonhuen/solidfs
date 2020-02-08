@@ -1,21 +1,22 @@
 #pragma once
 #include "common.h"
+namespace solid {
+    union super_block{
+        struct {
+            uint32_t magic_number;
 
-union super_block{
-    struct {
-        uint32_t magic_number;
+            BlockID nr_block;
 
-        bid_t nr_block;
+            // all in terms of block 
+            BlockID s_iblock;
+            BlockID nr_iblock;
+            
+            // all in terms of block 
+            BlockID s_dblock;
+            BlockID nr_dblock;
 
-        // all in terms of block 
-        bid_t s_iblock;
-        bid_t nr_iblock;
-        
-        // all in terms of block 
-        bid_t s_dblock;
-        bid_t nr_dblock;
-
-        bid_t h_dblock;
+            BlockID h_dblock;
+        };
+        uint8_t data[config::block_size];
     };
-    uint8_t data[BLOCK_SIZE];
 };

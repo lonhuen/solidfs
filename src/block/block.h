@@ -1,19 +1,20 @@
+#pragma once
 #include "common.h"
 #include "inode/inode.h"
 
-// TODO(lonhh): whether we need to use BLOCK or just uint8_t* to represent a block
-//
-struct Block{
-    union {
-        uint8_t data[BLOCK_SIZE];
-        struct{
-            // used for freelist
-            bid_t fl_entry[BLOCK_SIZE/sizeof(bid_t)];
+namespace solid {
+    struct Block{
+        union {
+            uint8_t data[config::block_size];
+            struct{
+                // used for freelist
+                BlockID fl_entry[config::block_size/sizeof(BlockID)];
+            };
+            struct{
+                // used for indexing data blocks by inode
+                BlockID bl_entry[config::block_size/sizeof(BlockID)];
+            };
+            INode inode[config::block_size/sizeof(INode)];
         };
-        struct{
-            // used for indexing data blocks by inode
-            bid_t bl_entry[BLOCK_SIZE/sizeof(bid_t)];
-        };
-        INode inode[BLOCK_SIZE/sizeof(INode)];
     };
 };

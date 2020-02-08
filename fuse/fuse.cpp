@@ -46,12 +46,12 @@ extern "C" {
 		st->st_atime   = inode.atime;
 		st->st_ctime   = inode.ctime;
 		st->st_mtime   = inode.mtime;
-		st->st_blksize = BLOCK_SIZE;
+		st->st_blksize = config::block_size;
 		// ingore this
 		//fi->st_dev     = inode.dev;
-		if (inode.itype != inode_type::DIRECTORY) {
+		if (inode.itype != INodeType::DIRECTORY) {
 			st->st_mode = st->st_mode | S_IFREG;
-		} else if (inode.itype == inode_type::DIRECTORY) {
+		} else if (inode.itype == INodeType::DIRECTORY) {
 			st->st_mode = st->st_mode | S_IFDIR;
 		} else {
 			LOG(ERROR) << "Unkown file type for " << path;
@@ -253,7 +253,7 @@ extern "C" {
             return -1;
         } 
         // update inode metadata
-        INode inode = INode::get_inode(f_id,inode_type::REGULAR);
+        INode inode = INode::get_inode(f_id,INodeType::REGULAR);
         inode.mode = mode;
         // dev??
         //inode.dev
@@ -309,7 +309,7 @@ extern "C" {
             return -1;
         } 
         // update inode metadata
-        INode inode = INode::get_inode(f_id,inode_type::DIRECTORY);
+        INode inode = INode::get_inode(f_id,INodeType::DIRECTORY);
         inode.mode = mode;
         fs->im->write_inode(f_id,inode.data);
         //update directory

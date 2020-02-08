@@ -5,23 +5,23 @@
 #include <string>
 #include <map>
 
-//TODO(lonhh): do we need move constructor here?
-class Directory {
-    // unordered_map is more efficient for pure entity look up
-    //std::unordered_map<std::string, int> entry_m;
-
+namespace solid {
+    //TODO(lonhh): do we need move constructor here?
+    class Directory {
     public:
-    iid_t id;
-    //TODO(lonhh): this should not be public
-    std::unordered_map<std::string, iid_t> entry_m;
-    Directory();
-    Directory(iid_t id, iid_t parent);
-    Directory(iid_t id,const uint8_t* byte_stream, uint32_t size);
-    int insert_entry(const std::string& s,iid_t id);
-    int remove_entry(const std::string& s);
-    int contain_entry(const std::string& s) const;
-    int get_entry(const std::string& s, iid_t* ret) const;
+        INodeID id;
+        std::unordered_map<std::string, INodeID> entry_m;
 
-    int serialize(uint8_t* byte_stream, uint32_t size);
-    int deserialize(const uint8_t* byte_stream, uint32_t size);
+        Directory();
+        Directory(INodeID id, INodeID parent);
+        Directory(INodeID id,const uint8_t* byte_stream, uint32_t size);
+        void insert_entry(const std::string& s,INodeID id);
+        void remove_entry(const std::string& s);
+        bool contain_entry(const std::string& s) const;
+        INodeID get_entry(const std::string& s) const;
+
+        int serialize(uint8_t* byte_stream, uint32_t size);
+        int deserialize(const uint8_t* byte_stream, uint32_t size);
+    };
+
 };
