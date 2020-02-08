@@ -27,6 +27,7 @@ extern "C" {
         LOG(INFO) << "getattr " << path;
         iid_t id;
         int p_res = fs->path2iid(path, &id);
+        LOG(INFO) << "get attr inode " << id;
         if (p_res == 0) {  // inode not found
             LOG(ERROR) << "Cannot getattr file " << path;
             return -ENOENT;
@@ -99,7 +100,8 @@ extern "C" {
         return fs->read(id, (uint8_t *)buf, (uint32_t)size,(uint32_t)offset);
     }
 
-    int s_write(const char *path, const char* buf, size_t size, off_t offset,struct fuse_file_info *fi) {
+    int s_write(const char *path, const char* buf, size_t size, off_t offset,
+                struct fuse_file_info *fi) {
         LOG(INFO) << "write " << path;
         int res = s_open(path, fi);
         if (res == -1) {
@@ -154,15 +156,31 @@ extern "C" {
 
     int s_unlink(const char *path) {
         LOG(INFO) << "unlink " << path;
+        std::string p(path);
+        std::size_t i = p.rfind('/');
+        std::string dir_path;
+        if(i == 0) {
+            dir_path = p.substr(0, 1);
+        } else {
+            dir_path = p.substr(0, i);
+        }
+        std::string f_path = p.substr(i+1, p.length()-i-1);
+
+        // get dir
+        iid_t dir_id;
+        fs->path2iid(dir_path,&dir_id);
+        LOG(INFO) << "directory " << dir_path << " inode id " << dir_id;
+        Directory dr = fs->read_directory(dir_id);
+        LOG(INFO) << "entry num " << dr.entry_m.size();
         iid_t id;
-        int p_res = fs->path2iid((const std::string)path, &id);
-        if (p_res == 0) {  // inode not found
-            LOG(ERROR) << "Cannot find file to unlink " << path;
-            return -1;
+        dr.get_entry(f_path,&id);
+        dr.remove_entry(f_path);
+        if(fs->write_directory(dir_id,dr) != 1) {
+            LOG(ERROR) << "writing failed";
         }
         return fs->unlink(id);
     }
-
+    
     int s_readdir(const char * path, void *buf, fuse_fill_dir_t filler,
                   off_t offset, struct fuse_file_info *fi, 
                   enum fuse_readdir_flags flags) {
@@ -242,6 +260,7 @@ extern "C" {
         fs->im->write_inode(f_id,inode.data);
         return 0;
     }
+
     int s_utimens(const char *path, const struct timespec ts[2],
 		       struct fuse_file_info *fi) {
         LOG(INFO) << "utime " << path;
@@ -292,11 +311,32 @@ extern "C" {
         // update inode metadata
         INode inode = INode::get_inode(f_id,inode_type::DIRECTORY);
         inode.mode = mode;
+        fs->im->write_inode(f_id,inode.data);
+        //update directory
+        Directory dr(f_id,dir_id);
+        fs->write_directory(f_id,dr);
         // dev??
         //inode.dev
-        fs->im->write_inode(f_id,inode.data);
         return 0;
     }
+
+    int s_rmdir(const char *path) {
+        LOG(INFO) << "rmdir " << path;
+        iid_t id;
+        int p_res = fs->path2iid((const std::string)path, &id);
+        if (p_res == 0) {  // inode not found
+            LOG(ERROR) << "Cannot find file to rmdir " << path;
+            return -ENOENT;
+        }
+        // judge whether it's empty or not
+        Directory dir = fs->read_directory(id);
+        if(dir.entry_m.size() > 2) {
+            LOG(ERROR) << "Cannot rmdir a non-empty directory " << path;
+            return -ENOTEMPTY;
+        }
+        return fs->unlink(id);
+    }
+
 }
   
 int main(int argc, char *argv[]) {
@@ -318,7 +358,9 @@ int main(int argc, char *argv[]) {
     s_oper.utimens= s_utimens;
     s_oper.mkdir = s_mkdir;
     s_oper.mknod = s_mknod;
+    s_oper.rmdir = s_rmdir;
 
+    // call s_init here?
     int argcount = 0;
     char *argument[12];
 
