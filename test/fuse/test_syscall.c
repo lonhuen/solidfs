@@ -1898,7 +1898,7 @@ int main(int argc, char *argv[])
     //err += test_rename_file();
     //err += test_rename_dir();
     //err += test_rename_dir_loop();
-    //err += test_seekdir();
+    err += test_seekdir();
     //err += test_socket();
     //err += test_utime();
     err += test_truncate(0);

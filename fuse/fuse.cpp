@@ -267,6 +267,9 @@ extern "C" {
   
 int main(int argc, char *argv[]) {
     // TODO: change this later to customize size based on argv
+
+    LogUtils::log_level = "0";
+    LogUtils::init(argv[0]);
     fs = new FileSystem(10 + 512 + 512 * 512, 9);
     fs->mkfs();
 
