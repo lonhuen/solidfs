@@ -16,7 +16,7 @@ namespace solid {
         bool flag = false;
         try {
             f();
-        } catch (const fs_exception& e) {
+        } catch (const std::exception& e) {
             flag = true;
         }
         return flag;
@@ -390,15 +390,15 @@ namespace solid {
         });
 
         while(1) {
+            // data block won't change file size!
             if(existException([&](){fs->new_dblock(inode);})) {
                 break;
             }
         }
-        EXPECT_TRUE(inode.block!=1);
         fs->truncate(0,1);
         inode = fs->im->read_inode(0);
-        EXPECT_TRUE(inode.block==1);
-        EXPECT_TRUE(inode.size==1);
+        EXPECT_EQ(inode.block,1);
+        EXPECT_EQ(inode.size,1);
 
         auto s = 0;
         while(1) {

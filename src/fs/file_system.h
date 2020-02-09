@@ -26,8 +26,8 @@ namespace solid {
 
         int read(INodeID id,uint8_t* dst,uint32_t size,uint32_t offset);
         int write(INodeID id,const uint8_t* src,uint32_t size,uint32_t offset);
-        int truncate(INodeID id, uint32_t size);
-        int unlink(INodeID id);
+        void truncate(INodeID id, uint32_t size);
+        void unlink(INodeID id);
 
         INodeID path2iid(const std::string& path);
         Directory read_directory(INodeID id);

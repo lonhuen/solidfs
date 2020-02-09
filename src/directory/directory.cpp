@@ -13,13 +13,15 @@ namespace solid {
     void Directory::insert_entry(const std::string& s,INodeID id) {
         // TODO(lonhh) sanity check
         if(contain_entry(s)) {
-            throw fs_exception("trying to insert the same entry ", s, " to directory");
+            throw fs_exception(std::errc::file_exists,
+                "Already exists ", s, " in directory ", id);
         }
         this->entry_m[s] = id;
     }
     void Directory::remove_entry(const std::string& s) {
         if(!contain_entry(s)) {
-            throw fs_exception("trying to remove a non-exist entry ", s, " to directory");
+            throw fs_exception(std::errc::no_such_file_or_directory,
+                "No such file/directory ", s, " in directory ", id);
         }
         this->entry_m.erase(s);
 
@@ -34,7 +36,8 @@ namespace solid {
     INodeID Directory::get_entry(const std::string& s) const {
         auto p = this->entry_m.find(s);
         if(p == this->entry_m.end()){
-            throw fs_exception("get_entry: no such an entry ", s);
+            throw fs_exception(std::errc::no_such_file_or_directory,
+                "No such file/directory ", s, " in directory ", id);
         }
         return p->second;
     }

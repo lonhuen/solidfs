@@ -16,7 +16,6 @@ namespace solid {
     private:
         // since super block doesn't usually change its config, let's cache it.
         super_block sblock;
-        bool initialized;
     };
 
 };

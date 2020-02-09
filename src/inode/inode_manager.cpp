@@ -46,8 +46,9 @@ namespace solid {
     }
 
     INode INodeManager::read_inode(INodeID id) {
+        LOG(INFO) << "@read_inode " << id;
         if(id >= nr_iblock * nr_inode_per_block){
-            throw fs_exception("read_inode ",id, " out of range");
+            throw fs_error("read_inode ",id, " out of range");
         }
         Block bl;
         storage->read_block(conv_iID_bID(id,s_iblock),bl.data);
@@ -57,8 +58,9 @@ namespace solid {
     }
 
     void INodeManager::write_inode(INodeID id, const INode& src) {
+        LOG(INFO) << "@write_inode " << id;
         if(id >= nr_iblock * nr_inode_per_block){
-            throw fs_exception("write_inode ",id, " out of range");
+            throw fs_error("write_inode ",id, " out of range");
         }
         Block bl;
         storage->read_block(conv_iID_bID(id,s_iblock),bl.data);
@@ -67,6 +69,7 @@ namespace solid {
     }
 
     INodeID INodeManager::allocate_inode() {
+        LOG(INFO) << "@allocate_inode";
         Block bl;
         for(BlockID i=s_iblock;i < s_iblock + nr_iblock; i++) {
             storage->read_block(i,bl.data);
@@ -76,10 +79,13 @@ namespace solid {
                 }
             }
         }
-        throw fs_exception("no free inode when allocate_inode");
+        throw fs_exception(
+            std::errc::no_space_on_device,
+            "@allocate_inode: no free inode");
     }
 
     void INodeManager::free_inode(INodeID id) {
+        LOG(INFO) << "@free_inode " << id;
         Block bl;
         storage->read_block(conv_iID_bID(id,s_iblock),bl.data);
         if(bl.inode[conv_iID_offset(id)].itype != INodeType::FREE) {
@@ -87,6 +93,7 @@ namespace solid {
             storage->write_block(conv_iID_bID(id,s_iblock),bl.data);
             return;
         }
-        throw fs_exception("double free inode ",id);
+        // TODO(lonhh): this might be an error or not
+        // throw fs_error("@free_inode: double free inode ",id);
     }
 };

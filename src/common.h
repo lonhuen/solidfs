@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <system_error>
 
 namespace solid {
     using BlockID = uint64_t;
