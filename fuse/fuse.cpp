@@ -73,14 +73,21 @@ extern "C" {
         });
 	}
 
+    // let the kernel to do the permission check
+    // If the -o default_permissions mount option is given,
+    // this check is already done by the kernel before calling open() and may thus be omitted by the filesystem.
     int s_open(const char* path, struct fuse_file_info* fi) {
         LOG(INFO) << "#open " << path;
         
         return unwrap([&](){
             INodeID id = fs->path2iid(path);
             // TODO(lonhh): we need to handle with the file handler here
-            if(fi != nullptr)
+            if(fi != nullptr) {
                 fi->fh = config::conv_file_handler(id);
+                // ? (lonhh): should we do it here?
+                if (fi->flags & O_TRUNC)
+                    fs->truncate(id,0);
+            }
             return 0;
         });
     }
