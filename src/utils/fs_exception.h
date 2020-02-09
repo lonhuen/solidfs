@@ -5,27 +5,31 @@
 #include <string>
 #include <sstream>
 #include <utility>
+#include <system_error>
 
 #include "utils/string_utils.h"
 
 // mainly taken from a private repo called "nova"
 
 namespace solid {
-    class fs_exception : public std::exception {
+    class fs_exception : public std::system_error{
         
         const std::string msg;
     public:
-        explicit fs_exception(const std::string& msg) :
-            msg(construct_exception_message(msg)) {
+        explicit fs_exception(std::errc code, const std::string& msg) : std::system_error(
+            std::make_error_code(code),
+            msg(construct_exception_message(msg))
+        ) {
         }
 
         template<typename ... ArgT>
-        explicit fs_exception(ArgT&& ... args):
-            msg(construct_exception_message(String::of(std::forward<ArgT>(args)...))) {
+        explicit fs_exception(std::errc code, ArgT&& ... args) : std::system_error(
+            std::make_error_code(code),
+            msg(construct_exception_message(String::of(std::forward<ArgT>(args)...)))) {
         }
 
         const char* what() const noexcept override {
-            return msg.data();
+            return super->data();
         }
 
     private:
