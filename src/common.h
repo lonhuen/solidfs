@@ -17,5 +17,11 @@ namespace solid {
         inline static uint64_t mod_block_size(uint64_t x) {
             return x & 0xfff;
         }
+        inline static uint64_t conv_file_handler(INodeID x) {
+            return (uint64_t)(x + 2);
+        }
+        inline static uint64_t rest_file_handler(uint64_t x) {
+            return (BlockID)(x - 2);
+        }
     };
 };

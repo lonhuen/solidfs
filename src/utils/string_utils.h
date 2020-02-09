@@ -54,3 +54,4 @@ namespace solid {
     }
   };
 }
+#include "utils/iostream_utils.h"

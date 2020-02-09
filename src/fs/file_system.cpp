@@ -87,6 +87,8 @@ namespace solid {
             Directory dr = read_directory(ret);
             ret = dr.get_entry(*p);
         }
+        LOG(INFO) << "@path2iid " << String::of(v);
+        LOG(INFO) << "@path2iid: return " << ret;
         return ret;
     }
 

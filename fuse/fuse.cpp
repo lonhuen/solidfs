@@ -34,40 +34,40 @@ inline int unwrap(std::function<int(void)> f) {
     }
 };
 
-
+// TODO(lonhh) maybe we need to optimize the functions by using fuse_fiel_info
 extern "C" {
 
     //void*s_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
     //    return NULL;
     //}
-
+    
     int s_getattr(const char* path, struct stat* st, struct fuse_file_info *fi) {
         LOG(INFO) << "#getattr " << path;
 
         return unwrap([&](){
             INodeID id = fs->path2iid(path);
-            LOG(ERROR) << "break point" << path;
             INode inode = fs->im->read_inode(id);
-
-            st->st_ino     = id;
-            st->st_mode    = inode.mode;
-            st->st_nlink   = inode.links;
-            st->st_uid     = inode.uid;
-            st->st_gid     = inode.gid;
-            st->st_size    = inode.size;
-            st->st_blocks  = inode.block;
-            st->st_atime   = inode.atime;
-            st->st_ctime   = inode.ctime;
-            st->st_mtime   = inode.mtime;
-            st->st_blksize = config::block_size;
-            // ingore this
-            //fi->st_dev     = inode.dev;
-            if (inode.itype != INodeType::DIRECTORY) {
-                st->st_mode = st->st_mode | S_IFREG;
-            } else if (inode.itype == INodeType::DIRECTORY) {
-                st->st_mode = st->st_mode | S_IFDIR;
-            } else {
-                LOG(ERROR) << "Unkown file type for " << path;
+            if (st != nullptr) {
+                st->st_ino     = id;
+                st->st_mode    = inode.mode;
+                st->st_nlink   = inode.links;
+                st->st_uid     = inode.uid;
+                st->st_gid     = inode.gid;
+                st->st_size    = inode.size;
+                st->st_blocks  = inode.block;
+                st->st_atime   = inode.atime;
+                st->st_ctime   = inode.ctime;
+                st->st_mtime   = inode.mtime;
+                st->st_blksize = config::block_size;
+                // ingore this
+                //fi->st_dev     = inode.dev;
+                if (inode.itype != INodeType::DIRECTORY) {
+                    st->st_mode = st->st_mode | S_IFREG;
+                } else if (inode.itype == INodeType::DIRECTORY) {
+                    st->st_mode = st->st_mode | S_IFDIR;
+                } else {
+                    LOG(ERROR) << "Unkown file type for " << path;
+                }
             }
             return 0;
         });
@@ -78,7 +78,9 @@ extern "C" {
         
         return unwrap([&](){
             INodeID id = fs->path2iid(path);
-            fi->fh = id;    // cache inode id
+            // TODO(lonhh): we need to handle with the file handler here
+            if(fi != nullptr)
+                fi->fh = config::conv_file_handler(id);
             return 0;
         });
     }
@@ -91,8 +93,7 @@ extern "C" {
 
             if(res < 0)
                 return res;
-
-            INodeID id = fi->fh;
+            INodeID id = (fi == nullptr) ? fs->path2iid(path) : config::rest_file_handler(fi->fh);
             return fs->read(id, (uint8_t *)buf, (uint32_t)size,(uint32_t)offset);
         });
     }
@@ -104,21 +105,21 @@ extern "C" {
             int res = s_open(path, fi);
             if (res < 0)
                 return res;
-            INodeID id = fi->fh;
+            INodeID id = (fi == nullptr) ? fs->path2iid(path) : config::rest_file_handler(fi->fh);
             return fs->write(id, (const uint8_t *)buf,
                             (uint32_t) size, (uint32_t) offset);
         });
     }
 
     int s_truncate(const char *path, off_t offset, struct fuse_file_info *fi) {
-        LOG(INFO) << "#truncate " << path;
+        LOG(INFO) << "#truncate " << path << " " << offset;
         
         return unwrap([&](){
             int res = s_open(path, fi);
             if (res < 0) {
                 return res;
             }
-            INodeID id = fi->fh;
+            INodeID id = (fi == nullptr) ? fs->path2iid(path) : config::rest_file_handler(fi->fh);
             fs->truncate(id, (uint32_t) offset);
             return 0;
         });
@@ -156,7 +157,7 @@ extern "C" {
             if (res < 0)
                 return res;
 
-            INodeID id = fi->fh;
+            INodeID id = (fi == nullptr) ? fs->path2iid(path) : config::rest_file_handler(fi->fh);
             Directory dir = fs->read_directory(id);
 
             for (auto entry : dir.entry_m) {
