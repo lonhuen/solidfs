@@ -14,14 +14,14 @@ namespace solid {
         // TODO(lonhh) sanity check
         if(contain_entry(s)) {
             throw fs_exception(std::errc::file_exists,
-                "Already exists ", s, " in directory ", id);
+                "@insert_entry Already exists ", s, " in directory ", id);
         }
         this->entry_m[s] = id;
     }
     void Directory::remove_entry(const std::string& s) {
         if(!contain_entry(s)) {
             throw fs_exception(std::errc::no_such_file_or_directory,
-                "No such file/directory ", s, " in directory ", id);
+                "@remove_entry No such file/directory ", s, " in directory ", id);
         }
         this->entry_m.erase(s);
 
@@ -37,7 +37,7 @@ namespace solid {
         auto p = this->entry_m.find(s);
         if(p == this->entry_m.end()){
             throw fs_exception(std::errc::no_such_file_or_directory,
-                "No such file/directory ", s, " in directory ", id);
+                "@get_entry No such file/directory ", s, " in directory ", id);
         }
         return p->second;
     }

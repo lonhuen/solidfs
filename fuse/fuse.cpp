@@ -28,9 +28,8 @@ inline int unwrap(std::function<int(void)> f) {
         return f();
     } catch (const fs_exception& e) {
         LOG(INFO) << e.what();
-        return e.code().value();
+        return -e.code().value();
     } catch (const fs_error& e) {
-        LOG(ERROR) << e.what();
         throw;
     }
 };
@@ -45,8 +44,9 @@ extern "C" {
     int s_getattr(const char* path, struct stat* st, struct fuse_file_info *fi) {
         LOG(INFO) << "#getattr " << path;
 
-        return wrap([&](){
+        return unwrap([&](){
             INodeID id = fs->path2iid(path);
+            LOG(ERROR) << "break point" << path;
             INode inode = fs->im->read_inode(id);
 
             st->st_ino     = id;
@@ -76,7 +76,7 @@ extern "C" {
     int s_open(const char* path, struct fuse_file_info* fi) {
         LOG(INFO) << "#open " << path;
         
-        return wrap([&](){
+        return unwrap([&](){
             INodeID id = fs->path2iid(path);
             fi->fh = id;    // cache inode id
             return 0;
@@ -86,7 +86,7 @@ extern "C" {
     int s_read(const char *path, char *buf, size_t size, off_t offset,
                 struct fuse_file_info *fi) {
         LOG(INFO) << "#read " << path;
-        return wrap([&](){
+        return unwrap([&](){
             int res = s_open(path, fi);
 
             if(res < 0)
@@ -100,7 +100,7 @@ extern "C" {
     int s_write(const char *path, const char* buf, size_t size, off_t offset,
                 struct fuse_file_info *fi) {
         LOG(INFO) << "#write " << path;
-        return wrap([&](){
+        return unwrap([&](){
             int res = s_open(path, fi);
             if (res < 0)
                 return res;
@@ -113,7 +113,7 @@ extern "C" {
     int s_truncate(const char *path, off_t offset, struct fuse_file_info *fi) {
         LOG(INFO) << "#truncate " << path;
         
-        return wrap([&](){
+        return unwrap([&](){
             int res = s_open(path, fi);
             if (res < 0) {
                 return res;
@@ -127,7 +127,7 @@ extern "C" {
     int s_unlink(const char *path) {
         LOG(INFO) << "#unlink " << path;
 
-        return wrap([&](){
+        return unwrap([&](){
             std::string p(path);
             std::string dir_name = fs->directory_name(p);
             std::string f_name = fs->file_name(p);
@@ -151,7 +151,7 @@ extern "C" {
                   enum fuse_readdir_flags flags) {
 
         LOG(INFO) << "#readdir " << path;
-        return wrap([&](){
+        return unwrap([&](){
             int res = s_open(path, fi);
             if (res < 0)
                 return res;
@@ -165,8 +165,9 @@ extern "C" {
                 //struct stat st;
                 //memset(&st, 0, sizeof(st));
                 //res = filler(buf, entry.first.c_str(), &st, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS);
-                if(filler(buf, entry.first.c_str(), NULL, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS))
-                    break;
+                //if(filler(buf, entry.first.c_str(), NULL, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS))
+                //    break;
+                filler(buf, entry.first.c_str(), NULL, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS);
             }
             return 0;
         });
@@ -174,7 +175,7 @@ extern "C" {
 
     int s_mknod(const char *path, mode_t mode, dev_t dev) {
         LOG(INFO) << "#mknod " << path;
-        return wrap([&](){
+        return unwrap([&](){
             // TODO(lonhh): check this! make sure that the error is correct
             //if (!S_INSREG(mode)) {
             //    return -ENOTSUP;
@@ -205,7 +206,7 @@ extern "C" {
 		       struct fuse_file_info *fi) {
         LOG(INFO) << "#utime " << path;
         
-        return wrap([&](){
+        return unwrap([&](){
             INodeID id = fs->path2iid(path);
             INode inode = fs->im->read_inode(id);
             inode.atime = ts[0].tv_nsec;
@@ -218,7 +219,7 @@ extern "C" {
     int s_mkdir(const char* path, mode_t mode) {
         LOG(INFO) << "#mkdir " << path;
         
-        return wrap([&](){
+        return unwrap([&](){
             std::string p(path);
             std::string dir_name = fs->directory_name(p);
             std::string f_name = fs->file_name(p);
@@ -242,7 +243,7 @@ extern "C" {
     int s_rmdir(const char *path) {
         LOG(INFO) << "#rmdir " << path;
 
-        return wrap([&](){
+        return unwrap([&](){
             INodeID id = fs->path2iid(path);
             
             Directory dir = fs->read_directory(id);
