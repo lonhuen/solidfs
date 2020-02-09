@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "inode/inode.h" 
 
 namespace solid {
   template<typename S, typename D>
@@ -35,5 +36,4 @@ namespace solid {
     out << "}";
     return out;
   }
-
 }

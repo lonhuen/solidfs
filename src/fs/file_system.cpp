@@ -92,7 +92,7 @@ namespace solid {
                 throw fs_exception("path doesn't exist ",path);
             }
         }
-        throw fs_exception("path2iid: should not reach here",path);
+        return ret;
     }
 
     int FileSystem::read(INodeID id,uint8_t* dst,uint32_t size,uint32_t offset) {

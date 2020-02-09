@@ -16,13 +16,14 @@
 #include "inode/inode.h"
 #include "directory/directory.h"
 #include "utils/fs_exception.h"
+#include "utils/string_utils.h"
 
 
 using namespace solid;
 FileSystem *fs;
 
 
-static bool existException(std::function<void(void)> f) {
+bool existException(std::function<void(void)> f) {
     try {
         f();
     } catch (const fs_exception& e) {
@@ -41,14 +42,15 @@ extern "C" {
     int s_getattr(const char* path, struct stat* st, struct fuse_file_info *fi) {
         LOG(INFO) << "getattr " << path;
 
-        INodeID id;
-        if (existException([&](){
-            id = fs->path2iid(path);
-        })) {
+        uint32_t id;
+        if (existException([&](){id = fs->path2iid(path);})) {
             LOG(ERROR) << "file not exists" << path;
             return -ENOENT;
         }
+
+        LOG(INFO) << "getinode " << id;
 		INode inode = fs->im->read_inode(id);
+        LOG(INFO) << String::of(inode);
 
 		st->st_ino     = id;
 		st->st_mode    = inode.mode;
@@ -70,6 +72,7 @@ extern "C" {
 		} else {
 			LOG(ERROR) << "Unkown file type for " << path;
         }
+        LOG(INFO) << "getattr return 0 " << path;
 		return 0;
 	}
 
@@ -282,7 +285,7 @@ extern "C" {
             LOG(ERROR) << "Cannot rmdir a non-empty directory " << path;
             return -ENOTEMPTY;
         }
-        return fs->unlink(id);
+        return s_unlink(path);
     }
 
 }
