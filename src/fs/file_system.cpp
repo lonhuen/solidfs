@@ -85,14 +85,11 @@ namespace solid {
         std::vector<std::string> v=parse_path(path);
         for(auto p=v.begin()+1;p!=v.end();p++) {
             Directory dr = read_directory(ret);
-            try {
-                ret = dr.get_entry(*p);
-            } catch(const fs_exception& e) {
-                LOG(INFO) << "path doesn't exist: " << path;
-                throw fs_exception("path doesn't exist ",path);
-            }
+            ret = dr.get_entry(*p);
         }
-        throw fs_exception("path2iid: should not reach here",path);
+        LOG(INFO) << "@path2iid " << String::of(v);
+        LOG(INFO) << "@path2iid: return " << ret;
+        return ret;
     }
 
     int FileSystem::read(INodeID id,uint8_t* dst,uint32_t size,uint32_t offset) {
@@ -100,10 +97,10 @@ namespace solid {
 
         // sanity check
         if(offset > inode.size) {
-            LOG(WARNING) << "Trying to access offset outside the file";
+            LOG(WARNING) << "@read: Try to access offset outside the file";
             return 0;
         } else if (offset + size > inode.size) {
-            LOG(WARNING) << "Trying to access outside the file";
+            LOG(WARNING) << "@read: Try to access offset+size outside the file";
             size = inode.size - offset;
         }
         // the number of blocks to read
@@ -131,7 +128,6 @@ namespace solid {
 
     int FileSystem::write(INodeID id,const uint8_t* src,uint32_t size,uint32_t offset) {
         // first judge whether we need to allocate more blocks
-        LOG(INFO) << "writing " << src;
         // TODO(lonhh) whether we can batch the allocating??
         INode inode = im->read_inode(id);
         std::vector<BlockID> allocated_blocks;
@@ -141,24 +137,33 @@ namespace solid {
             nr_allocate_blocks = nr_allocate_blocks - inode.block;
             allocated_blocks.reserve(nr_allocate_blocks);
             for(auto i=0;i<nr_allocate_blocks;i++){
-                allocated_blocks.push_back(new_dblock(inode));
+                try {
+                    allocated_blocks.push_back(new_dblock(inode));
+                } catch (const fs_exception& e) {
+                    for(auto t : allocated_blocks) {
+                        delete_dblock(inode);
+                    }
+                    throw;
+                }
             }
         }
 
-        auto flag = 0;
-        std::for_each(allocated_blocks.begin(),allocated_blocks.end(),[&](auto p){
-            if(p == 0) flag++;
-        });
+        //auto flag = 0;
+        //std::for_each(allocated_blocks.begin(),allocated_blocks.end(),[&](auto p){
+        //    if(p == 0) flag++;
+        //});
 
-        // TODO(lonhh) if we don't get enough blocks, just discard?
-        if(flag) {
-            LOG(ERROR) << "Not getting enough blocks for writing file " << inode.inode_number;
-            // free all the allocated ones
-            std::for_each(allocated_blocks.begin(),allocated_blocks.end(),[&](auto p){
-                if(p != 0) bm->free_dblock(p);
-            });
-            return 0;
-        }
+        //// TODO(lonhh) if we don't get enough blocks, just discard?
+        //if(flag) {
+        //    LOG(ERROR) << "@write: run out of data block for " << inode.inode_number;
+        //    // free all the allocated ones
+        //    std::for_each(allocated_blocks.begin(),allocated_blocks.end(),[&](auto p){
+        //        if(p != 0) bm->free_dblock(p);
+        //    });
+        //    throw fs_exception(std::errc::no_space_on_device,
+        //        "@write: run out of data block for ",inode.inode_number
+        //    );
+        //}
 
         // just get all the previous allocated blocks (before write function)
 
@@ -213,7 +218,8 @@ namespace solid {
                 p += block_lookup_per_region(inode,p - 10 - factor - factor * factor,
                                                 end - 10 - factor - factor*factor,ret,3);
             } else {
-                throw fs_exception("Trying to access maxmium file size");
+                // TODO(lonhh): maybe we should examine the maximum file size
+                throw fs_error("Trying to access maxmium file size");
             }
         }
         return ret;
@@ -343,7 +349,8 @@ namespace solid {
                 for(auto i=0;i<flag;i++) {
                     bm->free_dblock(allocate_block_array[i]);
                 }
-                throw fs_exception("new_dblock: not getting enough data blocks for inode ",inode.inode_number);
+                throw fs_exception(std::errc::no_space_on_device,
+                    "@new_dblock: run out of data blocks for ",inode.inode_number);
             }
             flag++;
         }
@@ -427,7 +434,7 @@ namespace solid {
     // we will not maintain the size
     int FileSystem::delete_dblock(INode& inode) {
         if(inode.block == 0) {
-            LOG(WARNING) << "freeing a non-exist data block for inode " << inode.inode_number;
+            LOG(WARNING) << "@delete_dblock: delete blocks for empty file " << inode.inode_number;
             return 0;
         }
 
@@ -562,9 +569,14 @@ namespace solid {
 
     Directory FileSystem::read_directory(INode& inode) {
         if(!inode.size) {
-            LOG(ERROR) << "size = 0 for directory inode " << inode.inode_number;
-            return std::move(Directory());
+            // TODO(lonhh) should this be an error? if the directory contains nothing
+            throw fs_error("@read_directory: size = 0 for inode ",inode.inode_number);
         }
+        if(inode.itype != INodeType::DIRECTORY) {
+            throw fs_exception(std::errc::not_a_directory,
+            "@read_directory: not a directory ",inode.inode_number);
+        }
+
         uint8_t* buffer = new uint8_t[inode.size];
         read(inode.inode_number,buffer,inode.size,0);
         Directory dr(inode.inode_number,buffer,inode.size);
@@ -590,30 +602,27 @@ namespace solid {
             break;
         }
         if(i >= 10)
-            throw fs_exception("write_directory failed",inode.inode_number);
+            throw fs_error("@write_directory: write failed due to the size ",inode.inode_number);
     }
 
     INodeID FileSystem::new_inode(const std::string& file_name,INode& inode) {
         // judge whether this is a directory
         if(inode.itype != INodeType::DIRECTORY) {
-            LOG(WARNING) << "cannot new a inode under a non-directory inode";
-            return 0;
+            throw fs_exception(std::errc::not_a_directory,"@new_inode ",file_name,inode.inode_number);
         }
         auto n_inode = im->allocate_inode();
-        if(n_inode == 0) {
-            LOG(WARNING) << "cannot allocate a new inode";
-            return 0;
-        }
 
         Directory dr = read_directory(inode);
         dr.insert_entry(file_name,n_inode);
         write_directory(inode,dr);
+
         // TODO(lonhh) : we just update the inode, but this should be optimzied
         inode = im->read_inode(inode.inode_number);
         return n_inode;
     }
 
-    int FileSystem::truncate(INodeID id, uint32_t size) {
+    // * truncate should also examine the blocks rather than only the size
+    void FileSystem::truncate(INodeID id, uint32_t size) {
         INode inode = im->read_inode(id);
 
         // extend
@@ -622,33 +631,28 @@ namespace solid {
             std::memset(buffer,0,size-inode.size);
             auto ret = write(id,buffer,size-inode.size,inode.size);
             delete []buffer;
-            return ret;
         }
-        uint32_t nr_free_blocks = inode.block - config::idiv_block_size(size) - 1;
-        if(config::mod_block_size(size) == 0) {
-            nr_free_blocks++;
-        }
+        uint32_t e_index  = inode.block;
+        //uint32_t s_index  = (config::mod_block_size(inode.size) == 0) ? config::idiv_block_size(inode.size) : config::idiv_block_size(inode.size) + 1;
+        uint32_t s_index  = (config::mod_block_size(size) == 0) ? config::idiv_block_size(size) : config::idiv_block_size(size) + 1;
+        uint32_t nr_free_blocks = e_index - s_index;
+        
         for(auto i=0;i<nr_free_blocks;i++) {
             delete_dblock(inode);
         }
         inode.size = size;
         im->write_inode(id,inode);
-        return 1;
     }
 
-    // return 0 if needs to free
-    // return 1 ow
-    int FileSystem::unlink(INodeID id) {
+    void FileSystem::unlink(INodeID id) {
         INode inode = im->read_inode(id);
 
         inode.links--;
         if(inode.links == 0) {
             truncate(id,0);
             im->free_inode(id);
-            return 0;
         } else {
             im->write_inode(id,inode);
-            return 1;
         }
     }
 

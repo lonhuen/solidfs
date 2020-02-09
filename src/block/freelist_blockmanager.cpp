@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include "block/freelist_blockmanager.h"
 #include "block/super_block.h"
 #include "block/block.h"
@@ -11,7 +12,6 @@ namespace solid {
     */
     void FreeListBlockManager:: mkfs() {
         p_storage->read_block(0, sblock.data);
-        initialized = true;
 
         auto i = sblock.s_dblock;
         struct Block tmp;
@@ -41,11 +41,9 @@ namespace solid {
      * @return return the data block
     */
     Block FreeListBlockManager::read_dblock(BlockID id) {
-        if(!initialized) {
-            throw fs_exception("read_dblock before mkfs");
-        }
+        LOG(INFO) << "@read_dblock " << id;
         if(id < sblock.s_dblock || id >= sblock.nr_block) {
-            throw fs_exception("read_dblock ", id ," not a valid a data block");
+            throw fs_error("@read_dblock: ", id, " out of range ");
         }
         Block bl;
         p_storage->read_block(id, bl.data);
@@ -54,11 +52,9 @@ namespace solid {
 
     // TODO(lonhh)
     void FreeListBlockManager::write_dblock(BlockID id, Block& bl) {
-        if(!initialized) {
-            throw fs_exception("write_dblock before mkfs");
-        }
+        LOG(INFO) << "@write_dblock " << id;
         if(id < sblock.s_dblock || id >= sblock.nr_block) {
-            throw fs_exception("write_dblock ", id ," not a valid a data block");
+            throw fs_error("@write_dblock: ", id, " out of range ");
         }
         p_storage->write_block(id, bl.data);
     }
@@ -68,10 +64,12 @@ namespace solid {
      * @return the BlockID of the allocated block, 0 for failure
     */
     BlockID FreeListBlockManager::allocate_dblock() {
+        LOG(INFO) << "@allocate_dblock";
         //let's assume that the h_dblock will be always the updated
         BlockID head = sblock.h_dblock;
         if (head == 0) {
-            throw fs_exception("allocate_dblock: run out of data block");
+            throw fs_exception( std::errc::no_space_on_device,
+                "@allocate_dblock: run out of data block");
         }
         Block bl = read_dblock(head);
         uint32_t i=1;
@@ -103,6 +101,11 @@ namespace solid {
     // TODO(lonhh): one performance issue----if we free one block, which needs to write the sblock, and then allocate a block and free it again.
     // TODO(lonhh): also do we need to check that the block is avaible or not? double free?
     void FreeListBlockManager::free_dblock(BlockID id) {
+        LOG(INFO) << "@free_dblock " << id;
+        
+        if(id < sblock.s_dblock || id >= sblock.nr_block) {
+            throw fs_error("@free_dblock: ", id, " out of range ");
+        }
         BlockID head = sblock.h_dblock;
         Block bl;
         p_storage->read_block(head,bl.data); 

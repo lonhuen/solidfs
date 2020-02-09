@@ -17,9 +17,9 @@ namespace solid {
      * @return if it's out of range, throw exception
      */
     void MemoryStorage::read_block(BlockID id, uint8_t* dst) {
-        LOG(INFO) << "read_block: " << id;
+        //LOG(INFO) << "read_block: " << id;
         if(id >= capacity){
-            throw fs_exception("read_block ",id," out of range ",capacity);
+            throw fs_error("@read_block ",id," out of range ",capacity);
         }
         std::memcpy(dst,data + id * config::block_size, config::block_size);
     }
@@ -29,9 +29,9 @@ namespace solid {
      * @return if it's out of range, throw exception
      */
     void MemoryStorage::write_block(BlockID id, const uint8_t* src) {
-        LOG(INFO) << "write_block " << id;
+        //LOG(INFO) << "write_block " << id;
         if(id >= capacity){
-            throw fs_exception("write_block ",id," out of range ",capacity);
+            throw fs_error("@write_block ",id," out of range ",capacity);
         }
         std::memcpy(data + id * config::block_size, src, config::block_size);
     }

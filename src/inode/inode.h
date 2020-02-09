@@ -33,6 +33,7 @@ namespace solid {
       inode.links = 1;
       inode.uid = 0;
       inode.gid = 0;
+      inode.mode = 0;
       return inode;
     }
     
@@ -44,6 +45,7 @@ namespace solid {
       inode.links = 1;
       inode.uid = 0;
       inode.gid = 0;
+      inode.mode = 0;
     }
   };
 

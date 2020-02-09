@@ -96,20 +96,20 @@ namespace solid {
             im->write_inode(i,inode);
         }
     }
-
     TEST_F(INodeTest,DoubleFreeTest) {
         for(auto i=0;i<nr_iblock*INodeManager::nr_inode_per_block;i++){
             im->free_inode(i);
         }
         auto sum = 0;
         for(auto i=0;i<nr_iblock*INodeManager::nr_inode_per_block;i++){
-            try {
+            // * since we are not treating double free as a problem now, just ignore this
+            //try {
                 im->free_inode(i);
-            } catch(const fs_exception& e){
-                sum++;
-            };
+            //} catch(const std::exception& e){
+            //    sum++;
+            //};
         }
-        EXPECT_EQ(sum,nr_iblock*INodeManager::nr_inode_per_block);
+        //EXPECT_EQ(sum,nr_iblock*INodeManager::nr_inode_per_block);
         for(auto i=0;i<nr_iblock*INodeManager::nr_inode_per_block;i++){
             EXPECT_EQ(im->allocate_inode(),i);
             INode inode;
