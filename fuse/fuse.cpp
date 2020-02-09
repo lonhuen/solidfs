@@ -23,13 +23,16 @@ using namespace solid;
 FileSystem *fs;
 
 
-bool existException(std::function<void(void)> f) {
+inline int unwrap(std::function<int(void)> f) {
     try {
-        f();
+        return f();
     } catch (const fs_exception& e) {
-        return true;
+        LOG(INFO) << e.what();
+        return e.code().value();
+    } catch (const fs_error& e) {
+        LOG(ERROR) << e.what();
+        throw;
     }
-    return false;
 };
 
 
@@ -40,252 +43,215 @@ extern "C" {
     //}
 
     int s_getattr(const char* path, struct stat* st, struct fuse_file_info *fi) {
-        LOG(INFO) << "getattr " << path;
+        LOG(INFO) << "#getattr " << path;
 
-        uint32_t id;
-        if (existException([&](){id = fs->path2iid(path);})) {
-            LOG(ERROR) << "file not exists" << path;
-            return -ENOENT;
-        }
+        return wrap([&](){
+            INodeID id = fs->path2iid(path);
+            INode inode = fs->im->read_inode(id);
 
-        LOG(INFO) << "getinode " << id;
-		INode inode = fs->im->read_inode(id);
-        LOG(INFO) << String::of(inode);
-
-		st->st_ino     = id;
-		st->st_mode    = inode.mode;
-		st->st_nlink   = inode.links;
-		st->st_uid     = inode.uid;
-		st->st_gid     = inode.gid;
-		st->st_size    = inode.size;
-		st->st_blocks  = inode.block;
-		st->st_atime   = inode.atime;
-		st->st_ctime   = inode.ctime;
-		st->st_mtime   = inode.mtime;
-		st->st_blksize = config::block_size;
-		// ingore this
-		//fi->st_dev     = inode.dev;
-		if (inode.itype != INodeType::DIRECTORY) {
-			st->st_mode = st->st_mode | S_IFREG;
-		} else if (inode.itype == INodeType::DIRECTORY) {
-			st->st_mode = st->st_mode | S_IFDIR;
-		} else {
-			LOG(ERROR) << "Unkown file type for " << path;
-        }
-        LOG(INFO) << "getattr return 0 " << path;
-		return 0;
+            st->st_ino     = id;
+            st->st_mode    = inode.mode;
+            st->st_nlink   = inode.links;
+            st->st_uid     = inode.uid;
+            st->st_gid     = inode.gid;
+            st->st_size    = inode.size;
+            st->st_blocks  = inode.block;
+            st->st_atime   = inode.atime;
+            st->st_ctime   = inode.ctime;
+            st->st_mtime   = inode.mtime;
+            st->st_blksize = config::block_size;
+            // ingore this
+            //fi->st_dev     = inode.dev;
+            if (inode.itype != INodeType::DIRECTORY) {
+                st->st_mode = st->st_mode | S_IFREG;
+            } else if (inode.itype == INodeType::DIRECTORY) {
+                st->st_mode = st->st_mode | S_IFDIR;
+            } else {
+                LOG(ERROR) << "Unkown file type for " << path;
+            }
+            return 0;
+        });
 	}
 
     int s_open(const char* path, struct fuse_file_info* fi) {
-        LOG(INFO) << "open " << path;
+        LOG(INFO) << "#open " << path;
         
-        INodeID id;
-        if (existException([&](){
-            id = fs->path2iid(path);
-        })) {
-            LOG(ERROR) << "file not exists" << path;
-            return -ENOENT;
-        }
-        fi->fh = id;    // cache inode id
-        return 0;
+        return wrap([&](){
+            INodeID id = fs->path2iid(path);
+            fi->fh = id;    // cache inode id
+            return 0;
+        });
     }
 
     int s_read(const char *path, char *buf, size_t size, off_t offset,
                 struct fuse_file_info *fi) {
-        LOG(INFO) << "read " << path;
-        
-        int res = s_open(path, fi);
-        if (res != 0) {
-            return res;
-        }
+        LOG(INFO) << "#read " << path;
+        return wrap([&](){
+            int res = s_open(path, fi);
 
-        INodeID id = fi->fh;
-        return fs->read(id, (uint8_t *)buf, (uint32_t)size,(uint32_t)offset);
+            if(res < 0)
+                return res;
+
+            INodeID id = fi->fh;
+            return fs->read(id, (uint8_t *)buf, (uint32_t)size,(uint32_t)offset);
+        });
     }
 
     int s_write(const char *path, const char* buf, size_t size, off_t offset,
                 struct fuse_file_info *fi) {
-        LOG(INFO) << "write " << path;
-        int res = s_open(path, fi);
-        if (res != 0) {
-            return res;
-        }
-
-        INodeID id = fi->fh;
-        return fs->write(id, (const uint8_t *)buf,
-                         (uint32_t) size, (uint32_t) offset);
+        LOG(INFO) << "#write " << path;
+        return wrap([&](){
+            int res = s_open(path, fi);
+            if (res < 0)
+                return res;
+            INodeID id = fi->fh;
+            return fs->write(id, (const uint8_t *)buf,
+                            (uint32_t) size, (uint32_t) offset);
+        });
     }
 
     int s_truncate(const char *path, off_t offset, struct fuse_file_info *fi) {
-        LOG(INFO) << "truncate " << path;
+        LOG(INFO) << "#truncate " << path;
         
-        int res = s_open(path, fi);
-        if (res != 0) {
-            return res;
-        }
-
-        INodeID id = fi->fh;
-        return fs->truncate(id, (uint32_t) offset)-1; // return 0 if success   
+        return wrap([&](){
+            int res = s_open(path, fi);
+            if (res < 0) {
+                return res;
+            }
+            INodeID id = fi->fh;
+            fs->truncate(id, (uint32_t) offset);
+            return 0;
+        });
     }
 
     int s_unlink(const char *path) {
-        LOG(INFO) << "unlink " << path;
+        LOG(INFO) << "#unlink " << path;
 
-        std::string p(path);
-        std::string dir_name = fs->directory_name(p);
-        std::string f_name = fs->file_name(p);
+        return wrap([&](){
+            std::string p(path);
+            std::string dir_name = fs->directory_name(p);
+            std::string f_name = fs->file_name(p);
 
-        INodeID dir_id;
-        if (existException([&](){
+            INodeID dir_id;
             dir_id = fs->path2iid(dir_name);
-        })) {
-            LOG(ERROR) << "directory not exists" << dir_name;
-            return -ENOENT;
-        }
 
-        INodeID f_id;
-        Directory dr = fs->read_directory(dir_id);
-        if (existException([&](){
-            f_id = dr.get_entry(f_name);
-        })) {
-            LOG(ERROR) << "file not exists" << f_name;
-            return -ENOENT;
-        }
-        dr.remove_entry(f_name);
-        fs->write_directory(dir_id,dr);
-        return fs->unlink(f_id);
+            Directory dr = fs->read_directory(dir_id);
+
+            INodeID f_id = dr.get_entry(f_name);
+            dr.remove_entry(f_name);
+            fs->write_directory(dir_id,dr);
+
+            fs->unlink(f_id);
+            return 0;
+        });
     }
     
     int s_readdir(const char * path, void *buf, fuse_fill_dir_t filler,
                   off_t offset, struct fuse_file_info *fi, 
                   enum fuse_readdir_flags flags) {
-        LOG(INFO) << "readdir " << path;
-        int res = s_open(path, fi);
-        if (res == -1) {
-            LOG(ERROR) << "Cannot read file " << path;
-            return -1;
-        }
 
-        INodeID id = fi->fh;
-        
-        Directory dir = fs->read_directory(id);
-        for (auto entry : dir.entry_m) {
-            //struct stat st;
-            //memset(&st, 0, sizeof(st));
-            //res = filler(buf, entry.first.c_str(), &st, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS);
-            res = filler(buf, entry.first.c_str(), NULL, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS);
-            if (res != 0) {
+        LOG(INFO) << "#readdir " << path;
+        return wrap([&](){
+            int res = s_open(path, fi);
+            if (res < 0)
                 return res;
+
+            INodeID id = fi->fh;
+            Directory dir = fs->read_directory(id);
+
+            for (auto entry : dir.entry_m) {
+                // TODO(lonhh): do we need to get the stat?
+                // * actually filler is used to check whether buffer is full
+                //struct stat st;
+                //memset(&st, 0, sizeof(st));
+                //res = filler(buf, entry.first.c_str(), &st, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS);
+                if(filler(buf, entry.first.c_str(), NULL, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS))
+                    break;
             }
-        }
-        return 0;
+            return 0;
+        });
     }
 
     int s_mknod(const char *path, mode_t mode, dev_t dev) {
-        LOG(INFO) << "mknod " << path;
-        //if (!S_INSREG(mode)) {
-        //    return -ENOTSUP;
-        //}
-        // parse path
-        std::string p(path);
-        std::string dir_name = fs->directory_name(p);
-        std::string f_name = fs->file_name(p);
+        LOG(INFO) << "#mknod " << path;
+        return wrap([&](){
+            // TODO(lonhh): check this! make sure that the error is correct
+            //if (!S_INSREG(mode)) {
+            //    return -ENOTSUP;
+            //}
+            std::string p(path);
+            std::string dir_name = fs->directory_name(p);
+            std::string f_name = fs->file_name(p);
 
-        // get dir
-        INodeID dir_id;
-        if (existException([&](){
-            dir_id = fs->path2iid(dir_name);
-        })) {
-            LOG(ERROR) << "directory not exists" << dir_name;
-            return -ENOENT;
-        }
+            // get dir
+            INodeID dir_id = fs->path2iid(dir_name);
+            INode dir_inode = fs->im->read_inode(dir_id);
 
-        INode dir_inode = fs->im->read_inode(dir_id);
+            //check dir will be done in new_inode
+            // allocate a new inode for this file
+            INodeID f_id = fs->new_inode(f_name,dir_inode);
 
-        // allocate a new inode for this file
-        INodeID f_id = fs->new_inode(f_name,dir_inode);
-        if (f_id == 0) {
-            LOG(ERROR) << "Cannot allocate a new inode " << path;
-            return -1;
-        } 
-        // update inode metadata
-        INode inode = INode::get_inode(f_id,INodeType::REGULAR);
-        inode.mode = mode;
-        // dev??
-        //inode.dev
-        fs->im->write_inode(f_id,inode);
-        return 0;
+            // update inode metadata
+            INode inode = INode::get_inode(f_id,INodeType::REGULAR);
+            inode.mode = mode;
+            // TODO(lonhh)
+            //inode.dev
+            fs->im->write_inode(f_id,inode);
+            return 0;
+        });
     }
 
     int s_utimens(const char *path, const struct timespec ts[2],
 		       struct fuse_file_info *fi) {
-        LOG(INFO) << "utime " << path;
+        LOG(INFO) << "#utime " << path;
         
-        INodeID id;
-        if (existException([&](){
-            id = fs->path2iid(path);
-        })) {
-            LOG(ERROR) << "file not exists" << path;
-            return -ENOENT;
-        }
-        
-        INode inode = fs->im->read_inode(id);
-        inode.atime = ts[0].tv_nsec;
-        inode.ctime = ts[1].tv_nsec;
-        fs->im->write_inode(id,inode);
-        return 0;
+        return wrap([&](){
+            INodeID id = fs->path2iid(path);
+            INode inode = fs->im->read_inode(id);
+            inode.atime = ts[0].tv_nsec;
+            inode.ctime = ts[1].tv_nsec;
+            fs->im->write_inode(id,inode);
+            return 0;
+        });
     }
 
     int s_mkdir(const char* path, mode_t mode) {
-        LOG(INFO) << "mkdir " << path;
-        std::string p(path);
-        std::string dir_name = fs->directory_name(p);
-        std::string f_name = fs->file_name(p);
-
-        INodeID dir_id;
-        if (existException([&](){
-            dir_id = fs->path2iid(dir_name);
-        })) {
-            LOG(ERROR) << "directory not exists" << dir_name;
-            return -ENOENT;
-        }
+        LOG(INFO) << "#mkdir " << path;
         
-        INode dir_inode = fs->im->read_inode(dir_id);
+        return wrap([&](){
+            std::string p(path);
+            std::string dir_name = fs->directory_name(p);
+            std::string f_name = fs->file_name(p);
 
-        // allocate a new inode for this dir 
-        INodeID f_id = fs->new_inode(f_name,dir_inode);
-        if (f_id == 0) {
-            LOG(ERROR) << "Cannot allocate a new inode " << path;
-            return -1;
-        } 
-        // update inode metadata
-        INode inode = INode::get_inode(f_id,INodeType::DIRECTORY);
-        inode.mode = mode;
-        fs->im->write_inode(f_id,inode);
-        //update directory
-        Directory dr(f_id,dir_id);
-        fs->write_directory(f_id,dr);
-        // dev??
-        //inode.dev
-        return 0;
+            INodeID dir_id = fs->path2iid(dir_name);
+            INode dir_inode = fs->im->read_inode(dir_id);
+            //check dir will be done in new_inode
+            // allocate a new inode for this dir 
+            INodeID f_id = fs->new_inode(f_name,dir_inode);
+            // update inode metadata
+            INode inode = INode::get_inode(f_id,INodeType::DIRECTORY);
+            inode.mode = mode;
+            fs->im->write_inode(f_id,inode);
+            //update directory
+            Directory dr(f_id,dir_id);
+            fs->write_directory(f_id,dr);
+            return 0;
+        });
     }
 
     int s_rmdir(const char *path) {
-        LOG(INFO) << "rmdir " << path;
-        INodeID id;
-        if (existException([&](){
-            id = fs->path2iid(path);
-        })) {
-            LOG(ERROR) << "directory not exists" << path;
-            return -ENOENT;
-        }
-        // judge whether it's empty or not
-        Directory dir = fs->read_directory(id);
-        if(dir.entry_m.size() > 2) {
-            LOG(ERROR) << "Cannot rmdir a non-empty directory " << path;
-            return -ENOTEMPTY;
-        }
-        return s_unlink(path);
+        LOG(INFO) << "#rmdir " << path;
+
+        return wrap([&](){
+            INodeID id = fs->path2iid(path);
+            
+            Directory dir = fs->read_directory(id);
+            if(dir.entry_m.size() > 2) {
+                throw fs_exception(std::errc::directory_not_empty,
+                "#rmdir: not a empty ",path);
+            }
+            return s_unlink(path);
+        });
     }
 
 }

@@ -570,6 +570,11 @@ namespace solid {
             // TODO(lonhh) should this be an error? if the directory contains nothing
             throw fs_error("@read_directory: size = 0 for inode ",inode.inode_number);
         }
+        if(!inode.itype != INodeType::DIRECTORY) {
+            throw fs_exception(std::errc::not_a_directory,
+            "@read_directory: not a directory ",inode.inode_number);
+        }
+
         uint8_t* buffer = new uint8_t[inode.size];
         read(inode.inode_number,buffer,inode.size,0);
         Directory dr(inode.inode_number,buffer,inode.size);
