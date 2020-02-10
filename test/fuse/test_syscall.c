@@ -1,4 +1,5 @@
 // taken from https://github.com/libfuse/libfuse/blob/master/test/test_syscalls.c
+// add additional test before main
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
@@ -2071,7 +2072,6 @@ static int test_write_add() {
     return 0;
 }
 
-
 // additional seek test
 
 // additional unlink test
@@ -2111,20 +2111,28 @@ static int test_mkdir_add(void) {
         return -1;
     }
 
-    char dirname[50];
+    char dirname[80];
+    strcpy(dirname, "");
     strcat(dirname, testdir2);
-    strcat(dirname, "/");
-    strcat(dirname, testdir);    
-
-    printf("nest dir name: %s", dirname);
-
+    strcat(dirname, "/testdir");    
+ 
     res = mkdir(dirname, 0755);
     if (res != -1) {
         ERROR("should not create nested dir %s at once", dirname);
         return -1;
     }
+    res = check_nonexist(dirname);
+    if (res == -1) {
+        ERROR("%s should not exist", dirname);
+        return -1;
+    }
 
+    // make nest dir from parent
     res = mkdir(testdir2, 0755);
+    if (res == -1) {
+        PERROR("mkdir");
+        return -1;
+    }
     res = mkdir(dirname, 0755);
     if (res == -1) {
         ERROR("cannot create nested dir %s", dirname);   
