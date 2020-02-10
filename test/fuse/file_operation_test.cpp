@@ -31,4 +31,7 @@ TEST_F(FSTest,ReadWriteTest) {
 
     for(auto i=0;i<strlen(buf1);i++)
         EXPECT_EQ(buf1[i],buf2[i]);
+
+    // EXPECT_EQ(a,13);
+    // EXPECT_EQ(b,13);
 }

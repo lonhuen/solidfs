@@ -18,10 +18,10 @@ namespace solid {
             return x & 0xfff;
         }
         inline static uint64_t conv_file_handler(INodeID x) {
-            return (uint64_t)(x + 2);
+            return (uint64_t)(x);
         }
         inline static uint64_t rest_file_handler(uint64_t x) {
-            return (BlockID)(x - 2);
+            return (BlockID)(x);
         }
     };
 };

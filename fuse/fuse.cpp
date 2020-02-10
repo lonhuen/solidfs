@@ -27,7 +27,7 @@ inline int unwrap(std::function<int(void)> f) {
     try {
         return f();
     } catch (const fs_exception& e) {
-        LOG(INFO) << e.what();
+        LOG(INFO) << e.what() << " " << e.code().value();
         return -e.code().value();
     } catch (const fs_error& e) {
         throw;
@@ -98,8 +98,9 @@ extern "C" {
         return unwrap([&](){
             int res = s_open(path, fi);
 
-            if(res < 0)
+            if(res < 0) {
                 return res;
+            }
             INodeID id = (fi == nullptr) ? fs->path2iid(path) : config::rest_file_handler(fi->fh);
             return fs->read(id, (uint8_t *)buf, (uint32_t)size,(uint32_t)offset);
         });
