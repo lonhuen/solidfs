@@ -1830,6 +1830,345 @@ static int do_test_create_ro_dir(int flags, const char *flags_str)
     return 0;
 }
 
+// additional read test
+static int test_read_add(void) {
+    const char *data = testdata;
+    int datalen = testdatalen;
+    int res;
+    int fd;
+
+    // set up read buffer and read length
+    char buf[2*sizeof(testdata)];
+    int readlen;
+    int offset;
+
+    start_test("read additional");
+
+    // read from 0 to readlen <= datalen
+    res = create_file(testfile, data, datalen);
+    if (res == -1) {
+        PERROR("creat");
+        return -1;
+    }
+
+    // printf("access %s with return = %d\n", testfile, access(testfile, F_OK));
+    fd = open(testfile, O_RDONLY);
+    if (fd == -1) {
+        PERROR("open");
+        return -1;
+    }
+
+    readlen = datalen / 2;
+    res = read(fd, buf, readlen);
+    if (res == -1) {
+        ERROR("case 1: read %d bytes from fd %d, buf = %s", res, fd, buf);
+        close(fd);
+        return -1;
+    }
+    if (res != readlen) {
+        ERROR("incorrect readlen: %u instead of %u", res, readlen);
+        close(fd);
+        return -1;
+    }
+    if (strncmp(buf, data, readlen) != 0) {
+        ERROR("incorrect read: %s instead of %s", buf, data);
+        close(fd);
+        return -1;
+    }
+    close(fd);
+
+    // read from 0 to len > datalen
+    res = create_file(testfile, data, datalen);
+    if (res == -1) {
+        PERROR("creat");
+        return -1;
+    }
+
+    fd = open(testfile, O_RDONLY);
+    if (fd == -1) {
+        PERROR("open");
+        return -1;
+    }
+
+    readlen = datalen + datalen / 2;
+    res = read(fd, buf, readlen);
+    if (res == -1) {
+        ERROR("case 2: read %u bytes from fd %d", readlen, fd);
+        close(fd);
+        return -1;
+    }  
+    if (res != datalen) {
+        ERROR("incorrect readlen: %u instead of %u", res, datalen);
+        close(fd);
+        return -1;
+    }
+    if (strncmp(buf, data, datalen) != 0) {
+        ERROR("incorrect read: %s instead of %s", buf, data);
+        close(fd); 
+        return -1;
+    }
+
+    // read from offset <= datalen
+    // with offset + readlen <= datalen
+    res = create_file(testfile, data, datalen);
+    if (res == -1) {
+        PERROR("creat");
+        return -1;
+    }
+
+    fd = open(testfile, O_RDONLY);
+    if (fd == -1) {
+        PERROR("open");
+        return -1;
+    }
+
+    readlen = datalen / 2;
+    offset = datalen - readlen;
+    res = lseek(fd, offset, SEEK_SET);
+    if (res == offset - 1) { 
+        PERROR("lseek");
+        close(fd);
+        return -1;
+    }
+    if (res != offset) {
+        ERROR("offset should have returned %u", offset);
+        close(fd);
+        return -1;
+    }
+
+    res = read(fd, buf, readlen);
+    if (res == -1) {
+        ERROR("case 3: read %u bytes from fd %d", readlen, fd);
+        close(fd);
+        return -1;
+    }
+    if (res != readlen) {
+        ERROR("incorrect readlen: %u instead of %u", res, readlen);
+        close(fd);
+        return -1;
+    }
+    if (strncmp(buf, data + offset, readlen) != 0) {
+        ERROR("incorrect read: %s instread of %s", buf, data + offset);
+        close(fd);
+        return -1;
+    }
+    close(fd);
+
+    // read from offset <= datalen
+    // with offset + readlen > datalen
+    res = create_file(testfile, data, datalen);
+    if (res == -1) {
+        PERROR("creat");
+        return -1;
+    }
+
+    fd = open(testfile, O_RDONLY);
+    if (fd == -1) {
+        PERROR("open");
+        return -1;
+    }
+    
+    readlen = datalen;
+    offset = datalen / 2;
+    
+    res = lseek(fd, offset, SEEK_SET);
+    if (res == offset - 1) {
+        PERROR("lseek");
+        close(fd);
+        return -1;
+    }
+    if (res != offset) {
+        ERROR("offset should have returned %u", offset);
+        close(fd);
+        return -1;
+    }
+
+    res = read(fd, buf, readlen);
+    if (res == -1) {
+        ERROR("case 4: read %u bytes from fd %d", readlen, fd);
+        close(fd);
+        return -1;
+    }
+    if (res != datalen - offset) {
+        ERROR("incorrect readlen: %u instead of %u", res, datalen-offset);
+        close(fd);
+        return -1;
+    }
+    if (strncmp(buf, data + offset, datalen-offset) != 0) {
+        ERROR("incorrect read: %s instread of %s", buf, data + offset);
+        close(fd);
+        return -1;
+    }
+    close(fd);
+ 
+    // all test passed
+    // unlink(testfile);
+    success();
+    return 0;       
+}
+
+
+// additional write test
+static int test_write_add() {
+    const char *data = testdata;
+    int datalen = testdatalen;
+    int res;
+    int fd;
+
+    // set up read buffer and read length
+    char buf[2*sizeof(testdata)];
+    int writelen;
+    int offset;
+
+    start_test("write additional");
+
+    // write new file
+    res = create_file(testfile, data, datalen);
+    if (res == -1) {
+        PERROR("creat");
+        return -1;
+    }   
+    res = check_data(testfile, data, 0, datalen);
+    if (res == -1) {
+        ERROR("read != write");
+        return -1;
+    }   
+
+    // write existing file from start
+    // write half of entire data
+    writelen = datalen / 2;
+    fd = open(testfile, O_RDWR);
+    if (fd == -1) {
+        PERROR("open");
+        return -1;
+    }
+
+    res = lseek(fd, 0, SEEK_SET);
+    if (res == -1) {
+        PERROR("lseek");
+        close(fd);
+        return -1;
+    }
+
+    res = write(fd, data + datalen - writelen, writelen);
+    if (res == -1) {
+        PERROR("write");
+        close(fd);
+        return -1;
+    }
+    if (res != writelen) {
+        ERROR("incorrect writelen: %u instead of %u", res, writelen);
+    }
+    res = check_data(testfile, data + datalen - writelen, 0, writelen);
+    if (res == -1) {
+        ERROR("read != write");
+        close(fd);
+        return -1;
+    }
+
+    // unlink(testfile);
+    success();
+    return 0;
+}
+
+
+// additional seek test
+
+// additional unlink test
+
+// additional mkdir test
+static int test_mkdir_add(void) {
+    const char *data = testdata;
+    int datalen = testdatalen;
+    int res;
+    int fd;
+
+    start_test("mkdir additional")
+ 
+    // make 1 sub dir
+    rmdir(testdir);
+    res = mkdir(testdir, 0755);
+    if (res == -1) {
+        PERROR("mkdir");
+        return -1;
+    } 
+    res = check_type(testdir, S_IFDIR);
+    if (res == -1) {
+        ERROR("%s not type directory", testdir);
+        return -1;
+    }
+    res = check_mode(testdir, 0755);
+    if (res == -1) {
+        ERROR("mode != 0755");
+        return -1;
+    }
+
+    // make nested dir, should return error
+    rmdir(testdir);
+    res = check_nonexist(testdir);
+    if (res == -1) {
+        ERROR("%s should not exist", testdir);
+        return -1;
+    }
+
+    char dirname[50];
+    strcat(dirname, testdir2);
+    strcat(dirname, "/");
+    strcat(dirname, testdir);    
+
+    printf("nest dir name: %s", dirname);
+
+    res = mkdir(dirname, 0755);
+    if (res != -1) {
+        ERROR("should not create nested dir %s at once", dirname);
+        return -1;
+    }
+
+    res = mkdir(testdir2, 0755);
+    res = mkdir(dirname, 0755);
+    if (res == -1) {
+        ERROR("cannot create nested dir %s", dirname);   
+        return -1;
+    }
+    res = check_type(dirname, S_IFDIR);
+    if (res == -1) {
+        ERROR("%s not type directory", dirname);
+        return -1;
+    }
+    res = check_mode(dirname, 0755);
+    if (res == -1) {
+        ERROR("mode != 0755");
+        return -1;
+    }
+
+    // clean up folder
+    rmdir(dirname);
+    res = check_nonexist(dirname);
+    if (res == -1) {
+        ERROR("%s should not exist", dirname);
+        return -1;
+    }     
+    rmdir(testdir2);
+    res = check_nonexist(dirname);
+    if (res == -1) {
+        ERROR("%s should not exist", dirname);
+        return -1;
+    }
+
+    // prevent file not found error in main
+    res = mkdir(testdir, 0755);
+    res = mkdir(testdir2, 0755);
+    success();
+    return 0;
+}
+
+
+// additional readdir test
+
+// additional rmdir test
+
+
+
 int main(int argc, char *argv[])
 {
     const char *basepath;
@@ -1898,13 +2237,15 @@ int main(int argc, char *argv[])
     //err += test_rename_file();
     //err += test_rename_dir();
     //err += test_rename_dir_loop();
-    err += test_seekdir();
+    //err += test_seekdir();
     //err += test_socket();
     //err += test_utime();
+       
     err += test_truncate(0);
     err += test_truncate(testdatalen / 2);
     err += test_truncate(testdatalen);
     err += test_truncate(testdatalen + 100);
+    
     //err += test_ftruncate(0, 0600);
     //err += test_ftruncate(testdatalen / 2, 0600);
     //err += test_ftruncate(testdatalen, 0600);
@@ -1912,6 +2253,7 @@ int main(int argc, char *argv[])
     //err += test_ftruncate(0, 0400);
     //err += test_ftruncate(0, 0200);
     //err += test_ftruncate(0, 0000);
+    
     err += test_open(0, O_RDONLY, 0);
     err += test_open(1, O_RDONLY, 0);
     err += test_open(1, O_RDWR, 0);
@@ -1935,6 +2277,7 @@ int main(int argc, char *argv[])
     err += test_open(1, O_RDWR | O_CREAT | O_EXCL, 0600);
     err += test_open(0, O_RDWR | O_CREAT | O_EXCL, 0000);
     err += test_open(1, O_RDWR | O_CREAT | O_EXCL, 0000);
+    
     //err += test_open_acc(O_RDONLY, 0600, 0);
     //err += test_open_acc(O_WRONLY, 0600, 0);
     //err += test_open_acc(O_RDWR,   0600, 0);
@@ -1955,6 +2298,10 @@ int main(int argc, char *argv[])
     //err += test_create_ro_dir(O_CREAT | O_WRONLY);
     //err += test_create_ro_dir(O_CREAT | O_TRUNC);
     //err += test_copy_file_range();
+    
+    err += test_read_add();
+    err += test_write_add();
+    err += test_mkdir_add();
 
     unlink(testfile);
     unlink(testfile2);
