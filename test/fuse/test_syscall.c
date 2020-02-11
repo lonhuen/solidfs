@@ -1831,6 +1831,18 @@ static int do_test_create_ro_dir(int flags, const char *flags_str)
     return 0;
 }
 
+// helper function to check if file exists
+static int check_exist(const char *path) {
+    struct stat stbuf;
+    int res = lstat(path, &stbuf);
+    if (res == 0) {  // file exists
+        return 0;
+    } else {
+        ERROR("file not exist");
+        return -1;
+    }
+}
+
 // additional read test
 static int test_read_add(void) {
     const char *data = testdata;
@@ -2001,9 +2013,17 @@ static int test_read_add(void) {
         return -1;
     }
     close(fd);
+
+    // read from offset > datalen;
+    offset = datalen + datalen / 2;
+    res = lseek(fd, offset, SEEK_SET);
+    if (res != -1) {
+        ERROR("offset > filesize: %d instead of %d", res, offset-1);
+        close(fd);
+        return -1;
+    }
  
     // all test passed
-    // unlink(testfile);
     success();
     return 0;       
 }
@@ -2067,14 +2087,14 @@ static int test_write_add() {
         return -1;
     }
 
-    // unlink(testfile);
+    // pass all tests
     success();
     return 0;
 }
 
-// additional seek test
+// additional seek test (in test_read_add)
 
-// additional unlink test
+// additional unlink test (in test_rmdir_add)
 
 // additional mkdir test
 static int test_mkdir_add(void) {
@@ -2161,27 +2181,123 @@ static int test_mkdir_add(void) {
         return -1;
     }
 
-    // prevent file not found error in main
-    res = mkdir(testdir, 0755);
-    res = mkdir(testdir2, 0755);
+    // pass all tests
     success();
     return 0;
 }
 
 // additional readdir test
+static int test_readdir_add(void) {
+    char parentdir[64];  // temp/testdir/
+    char dirpath1[64];   // temp/testdir/testdir -- empty dir
+    char dirpath2[64];   // temp/testdir/testdir2/ 
+    char filepath1[64];  // temp/testdir/testfile -- content of parentdir
+    char filepath2[64];  // temp/testdir/testdir2/testfile2
+                         //  -- content of dirpath2
+    const char *data1 = testdata;
+    const char *data2 = testdata2;
+    int datalen1 = testdatalen;
+    int datalen2 = testdata2len;
 
-// rmdir helper to check if file exists
-static int check_exist(const char *path) {
-    struct stat stbuf;
-    int res = lstat(path, &stbuf);
-    if (res == 0) {  // file exists
-        return 0;
-    } else {
-        ERROR("file not exist");
+    DIR *dir1;
+    DIR *dir2;
+    struct dirent *entry;
+    int res;
+
+    // construct path names
+    strcpy(parentdir, testdir);
+    
+    strcpy(dirpath1, testdir);
+    strcat(dirpath1, "/testdir");
+    
+    strcpy(dirpath2, testdir);
+    strcat(dirpath2, "/testdir2");
+
+    strcpy(filepath1, parentdir);
+    strcat(filepath1, "/testfile");
+
+    strcpy(filepath2, dirpath2);
+    strcat(filepath2, "/testfile2");
+    /*
+    printf("parentdir: %s\n", parentdir);
+    printf("dirpath1: %s\n", dirpath1);
+    printf("dirpath2: %s\n", dirpath2);
+    printf("filepath1: %s\n", filepath1);
+    printf("filepath2: %s\n", filepath2);
+    */
+    // create dir and file
+    unlink(filepath1);
+    unlink(filepath2);
+    rmdir(dirpath1);
+    rmdir(dirpath2);
+    rmdir(parentdir);
+    res = check_nonexist(parentdir) + check_nonexist(dirpath1)
+        + check_nonexist(dirpath2) + check_nonexist(filepath1)
+        + check_nonexist(filepath2);
+    if (res != 0) {
+        ERROR("file already exist");
         return -1;
     }
-}
 
+    res = mkdir(parentdir, 775) + mkdir(dirpath1, 775) + mkdir(dirpath2, 775)
+        + create_file(filepath1, data1, datalen1) 
+        + create_file(filepath2, data2, datalen2);
+    if (res != 0) {
+        ERROR("create dir and file failed");
+        return -1;
+    }
+    res = check_exist(parentdir) + check_exist(dirpath1) 
+        + check_exist(dirpath2) + check_data(filepath1, data1, 0, datalen1);
+        + check_data(filepath2, data2, 0, datalen2);
+    if (res != 0) {
+        ERROR("created dir/file content not match");
+        return -1;
+    }
+
+    start_test("readdir");
+
+    // read parentdir
+    if ((dir1 = opendir(parentdir)) == NULL) {
+        PERROR("opendir");
+        return -1;
+    } else {
+        int count = 0;
+        while ((entry = readdir(dir1)) != NULL) {
+            count += 1; 
+        }
+        closedir(dir1);
+        if ((dir2 = opendir(dirpath2)) == NULL) {
+            PERROR("opendir");
+            return -1;
+        } else {
+            while ((entry = readdir(dir2)) != NULL) {
+                count += 1;
+            }
+            closedir(dir2);
+        }
+        if (count != 6) {
+            ERROR("incorrect file number: %d instead of 6", count);
+            return -1;
+        }
+    }   
+    
+    // clean folder
+    unlink(filepath1);
+    unlink(filepath2);
+    rmdir(dirpath1);
+    rmdir(dirpath2);
+    rmdir(parentdir);
+    res = check_nonexist(parentdir) + check_nonexist(dirpath1)
+        + check_nonexist(dirpath2) + check_nonexist(filepath1)
+        + check_nonexist(filepath2);
+    if (res != 0) {
+        ERROR("file already exist");
+        return -1;
+    }
+
+    success();
+    return 0;
+}
 
 // additional rmdir test
 static int test_rmdir_add(void) {
@@ -2208,6 +2324,7 @@ static int test_rmdir_add(void) {
     strcat(filepath2, "/testfile");
 
     start_test("rmdir additional")   
+    
     // remove empty dir
     unlink(filepath);
     rmdir(testdir);
@@ -2296,6 +2413,8 @@ static int test_rmdir_add(void) {
     }
 
     // remove non empty dir with sub dir    
+    unlink(filepath2);
+    rmdir(dirpath);
     rmdir(testdir2);
     res = check_nonexist(testdir2);
     if (res == -1) {
@@ -2384,9 +2503,7 @@ static int test_rmdir_add(void) {
         return -1;
     }
 
-    // avoid unlink error
-    mkdir(testdir, 775);
-    mkdir(testdir2, 775);
+    // pass all tests
     success();
     return 0;
 }
@@ -2525,6 +2642,7 @@ int main(int argc, char *argv[])
     err += test_read_add();
     err += test_write_add();
     err += test_mkdir_add();
+    err += test_readdir_add();
     err += test_rmdir_add();
 
     unlink(testfile);
