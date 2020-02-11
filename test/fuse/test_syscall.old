@@ -126,12 +126,43 @@ static int check_size(const char *path, int len)
     return 0;
 }
 
+static int fcheck_size(int fd, int len)
+{
+    struct stat stbuf;
+    int res = fstat(fd, &stbuf);
+    if (res == -1) {
+        PERROR("fstat");
+        return -1;
+    }
+    if (stbuf.st_size != len) {
+        ERROR("length %u instead of %u", (int) stbuf.st_size,
+              (int) len);
+        return -1;
+    }
+    return 0;
+}
+
 static int check_type(const char *path, mode_t type)
 {
     struct stat stbuf;
     int res = lstat(path, &stbuf);
     if (res == -1) {
         PERROR("lstat");
+        return -1;
+    }
+    if ((stbuf.st_mode & S_IFMT) != type) {
+        ERROR("type 0%o instead of 0%o", stbuf.st_mode & S_IFMT, type);
+        return -1;
+    }
+    return 0;
+}
+
+static int fcheck_type(int fd, mode_t type)
+{
+    struct stat stbuf;
+    int res = fstat(fd, &stbuf);
+    if (res == -1) {
+        PERROR("fstat");
         return -1;
     }
     if ((stbuf.st_mode & S_IFMT) != type) {
@@ -157,6 +188,70 @@ static int check_mode(const char *path, mode_t mode)
     return 0;
 }
 
+static int fcheck_mode(int fd, mode_t mode)
+{
+    struct stat stbuf;
+    int res = fstat(fd, &stbuf);
+    if (res == -1) {
+        PERROR("fstat");
+        return -1;
+    }
+    if ((stbuf.st_mode & ALLPERMS) != mode) {
+        ERROR("mode 0%o instead of 0%o", stbuf.st_mode & ALLPERMS,
+              mode);
+        return -1;
+    }
+    return 0;
+}
+
+static int check_times(const char *path, time_t atime, time_t mtime)
+{
+    int err = 0;
+    struct stat stbuf;
+    int res = lstat(path, &stbuf);
+    if (res == -1) {
+        PERROR("lstat");
+        return -1;
+    }
+    if (stbuf.st_atime != atime) {
+        ERROR("atime %li instead of %li", stbuf.st_atime, atime);
+        err--;
+    }
+    if (stbuf.st_mtime != mtime) {
+        ERROR("mtime %li instead of %li", stbuf.st_mtime, mtime);
+        err--;
+    }
+    if (err)
+        return -1;
+
+    return 0;
+}
+
+#if 0
+static int fcheck_times(int fd, time_t atime, time_t mtime)
+{
+    int err = 0;
+    struct stat stbuf;
+    int res = fstat(fd, &stbuf);
+    if (res == -1) {
+        PERROR("fstat");
+        return -1;
+    }
+    if (stbuf.st_atime != atime) {
+        ERROR("atime %li instead of %li", stbuf.st_atime, atime);
+        err--;
+    }
+    if (stbuf.st_mtime != mtime) {
+        ERROR("mtime %li instead of %li", stbuf.st_mtime, mtime);
+        err--;
+    }
+    if (err)
+        return -1;
+
+    return 0;
+}
+#endif
+
 static int check_nlink(const char *path, nlink_t nlink)
 {
     struct stat stbuf;
@@ -173,16 +268,20 @@ static int check_nlink(const char *path, nlink_t nlink)
     return 0;
 }
 
-// helper function to check if file exists
-static int check_exist(const char *path) {
+static int fcheck_nlink(int fd, nlink_t nlink)
+{
     struct stat stbuf;
-    int res = lstat(path, &stbuf);
-    if (res == 0) {  // file exists
-        return 0;
-    } else {
-        ERROR("file not exist");
+    int res = fstat(fd, &stbuf);
+    if (res == -1) {
+        PERROR("fstat");
         return -1;
     }
+    if (stbuf.st_nlink != nlink) {
+        ERROR("nlink %li instead of %li", (long) stbuf.st_nlink,
+              (long) nlink);
+        return -1;
+    }
+    return 0;
 }
 
 static int check_nonexist(const char *path)
@@ -248,6 +347,35 @@ static int check_data(const char *path, const char *data, int offset,
     if (res == -1) {
         PERROR("close");
         return -1;
+    }
+    return 0;
+}
+
+static int fcheck_data(int fd, const char *data, int offset,
+               unsigned len)
+{
+    char buf[4096];
+    int res;
+    if (lseek(fd, offset, SEEK_SET) == (off_t) -1) {
+        PERROR("lseek");
+        return -1;
+    }
+    while (len) {
+        int rdlen = len < sizeof(buf) ? len : sizeof(buf);
+        res = read(fd, buf, rdlen);
+        if (res == -1) {
+            PERROR("read");
+            return -1;
+        }
+        if (res != rdlen) {
+            ERROR("short read: %u instead of %u", res, rdlen);
+            return -1;
+        }
+        if (check_buffer(buf, data, rdlen) != 0) {
+            return -1;
+        }
+        data += rdlen;
+        len -= rdlen;
     }
     return 0;
 }
@@ -394,6 +522,42 @@ static int cleanup_dir(const char *path, const char **dir_files, int quiet)
     return 0;
 }
 
+static int create_dir(const char *path, const char **dir_files)
+{
+    int res;
+    int i;
+
+    rmdir(path);
+    res = mkdir(path, 0755);
+    if (res == -1) {
+        PERROR("mkdir");
+        return -1;
+    }
+    res = check_type(path, S_IFDIR);
+    if (res == -1)
+        return -1;
+    res = check_mode(path, 0755);
+    if (res == -1)
+        return -1;
+
+    for (i = 0; dir_files[i]; i++) {
+        char fpath[1280];
+        sprintf(fpath, "%s/%s", path, dir_files[i]);
+        res = create_file(fpath, "", 0);
+        if (res == -1) {
+            cleanup_dir(path, dir_files, 1);
+            return -1;
+        }
+    }
+    res = check_dir_contents(path, dir_files);
+    if (res == -1) {
+        cleanup_dir(path, dir_files, 1);
+        return -1;
+    }
+
+    return 0;
+}
+
 static int test_truncate(int len)
 {
     const char *data = testdata;
@@ -439,7 +603,7 @@ static int test_truncate(int len)
     success();
     return 0;
 }
-/*
+
 static int test_ftruncate(int len, int mode)
 {
     const char *data = testdata;
@@ -526,7 +690,7 @@ static int test_seekdir(void)
         return -1;
     }
 
-    // Remember dir offsets
+    /* Remember dir offsets */
     for (i = 0; i < ARRAY_SIZE(seekdir_offsets); i++) {
         seekdir_offsets[i] = telldir(dp);
         errno = 0;
@@ -540,11 +704,11 @@ static int test_seekdir(void)
         }
     }
 
-    // Walk until the end of directory
+    /* Walk until the end of directory */
     while (de)
         de = readdir(dp);
 
-    // Start from the last valid dir offset and seek backwards
+    /* Start from the last valid dir offset and seek backwards */
     for (i--; i >= 0; i--) {
         seekdir(dp, seekdir_offsets[i]);
         de = readdir(dp);
@@ -564,6 +728,7 @@ fail:
     cleanup_dir(testdir, testdir_files, 1);
     return -1;
 }
+
 #ifdef HAVE_COPY_FILE_RANGE
 static int test_copy_file_range(void)
 {
@@ -799,7 +964,7 @@ static int test_create_unlink(void)
     success();
     return 0;
 }
-*/
+
 #ifndef __FreeBSD__
 static int test_mknod(void)
 {
@@ -992,7 +1157,7 @@ succ:
     success();
     return 0;
 }
-/*
+
 #define test_open_acc(flags, mode, err)  \
     do_test_open_acc(flags, #flags, mode, err)
 
@@ -1538,7 +1703,7 @@ static int test_mkfifo(void)
     return 0;
 }
 #endif
-*/
+
 static int test_mkdir(void)
 {
     int res;
@@ -1575,7 +1740,6 @@ static int test_mkdir(void)
     return 0;
 }
 
-/*
 static int test_socket(void)
 {
     struct sockaddr_un su;
@@ -1666,7 +1830,6 @@ static int do_test_create_ro_dir(int flags, const char *flags_str)
     success();
     return 0;
 }
-*/
 
 // helper function to check if file exists
 static int check_exist(const char *path) {
