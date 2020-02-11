@@ -2170,6 +2170,19 @@ static int test_mkdir_add(void) {
 
 // additional readdir test
 
+// rmdir helper to check if file exists
+static int check_exist(const char *path) {
+    struct stat stbuf;
+    int res = lstat(path, &stbuf);
+    if (res == 0) {  // file exists
+        return 0;
+    } else {
+        ERROR("file not exist");
+        return -1;
+    }
+}
+
+
 // additional rmdir test
 static int test_rmdir_add(void) {
     char dirpath[64];
@@ -2184,23 +2197,19 @@ static int test_rmdir_add(void) {
     strcat(dirpath, testdir2);
     strcat(dirpath, "/testdir");
 
-    printf("dirpath: %s\n", dirpath);
     // construct filepath: testdir/testfile
     strcpy(filepath, "");
     strcat(filepath, testdir);
     strcat(filepath, "/testfile");
 
-    printf("filepath: %s\n", filepath);
     // constrct filepath2: testdir2/testdir1/testfile
     strcpy(filepath2, "");
     strcat(filepath2, dirpath);
     strcat(filepath2, "/testfile");
 
-    printf("filepath2: %s\n", filepath2);
-
     start_test("rmdir additional")   
-
     // remove empty dir
+    unlink(filepath);
     rmdir(testdir);
     res = check_nonexist(testdir);
     if (res == -1) {
@@ -2208,8 +2217,8 @@ static int test_rmdir_add(void) {
         return -1;
     }
     res = mkdir(testdir, 0755);
-    res = check_nonexist(testdir);
-    if (res != -1) {
+    res = check_exist(testdir);
+    if (res == -1) {
         ERROR("%s not created", testdir);
         return -1;
     }
@@ -2226,13 +2235,17 @@ static int test_rmdir_add(void) {
       
     // remove non empty dir with file
     res = mkdir(testdir, 775);
+    if (res == -1) {
+        PERROR("mkdir");
+        return -1;
+    }
     res = create_file(filepath, data, datalen);
     if (res == -1) {
         PERROR("create_file");
         return -1;
     }
-    res = check_nonexist(filepath);
-    if (res != -1) {
+    res = check_exist(filepath);
+    if (res == -1) {
         ERROR("%s not existed", filepath);
         return -1;
     }
@@ -2243,13 +2256,13 @@ static int test_rmdir_add(void) {
         ERROR("should not remove non empty dir %s", testdir);
         return -1;
     }
-    res = check_nonexist(testdir);
-    if (res != -1) {
+    res = check_exist(testdir);
+    if (res == -1) {
         ERROR("%s not existed", testdir);
         return -1;
     }
-    res = check_nonexist(filepath);
-    if (res != -1) {
+    res = check_exist(filepath);
+    if (res == -1) {
         ERROR("%s not existed", filepath);
         return -1;
     }
@@ -2283,9 +2296,20 @@ static int test_rmdir_add(void) {
     }
 
     // remove non empty dir with sub dir    
-    res = mkdir(testdir2, 775) + mkdir(dirpath, 775);
+    rmdir(testdir2);
+    res = check_nonexist(testdir2);
+    if (res == -1) {
+        ERROR("%s already exists", testdir2);
+        return -1;
+    }
+    res = mkdir(testdir2, 775);
     if (res != 0) {
-        ERROR("failed to created nested dir %s", dirpath);
+        ERROR("failed to create dir %s", testdir2);
+        return -1;
+    }
+    res =mkdir(dirpath, 775);
+    if (res != 0) {
+        ERROR("failed to create dir %s", dirpath);
         return -1;
     }
     res = create_file(filepath2, data, datalen);
@@ -2300,10 +2324,10 @@ static int test_rmdir_add(void) {
         ERROR("should not remove non empty dir %s", testdir2);
         return -1;
     }
-    res = check_nonexist(testdir2) 
-        + check_nonexist(dirpath) 
-        + check_nonexist(filepath2);
-    if (res != -3) {
+    res = check_exist(testdir2) 
+        + check_exist(dirpath) 
+        + check_exist(filepath2);
+    if (res != 0) {
         ERROR("file not exist");
         return -1;
     } 
@@ -2325,8 +2349,8 @@ static int test_rmdir_add(void) {
         ERROR("should not remove non empty dir %s", testdir2);
         return -1;
     }
-    res = check_nonexist(testdir2) + check_nonexist(dirpath);
-    if (res != -2) {
+    res = check_exist(testdir2) + check_exist(dirpath);
+    if (res != 0) {
         ERROR("file not existed");
         return -1;
     }
@@ -2344,8 +2368,8 @@ static int test_rmdir_add(void) {
     }
 
     // remove parent dir
-    res = check_nonexist(testdir2);
-    if (res != -1) {
+    res = check_exist(testdir2);
+    if (res == -1) {
         ERROR("file not exist: %s", testdir2);
         return -1;
     }
@@ -2361,6 +2385,7 @@ static int test_rmdir_add(void) {
     }
 
     // avoid unlink error
+    mkdir(testdir, 775);
     mkdir(testdir2, 775);
     success();
     return 0;
