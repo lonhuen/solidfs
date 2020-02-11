@@ -2078,10 +2078,13 @@ static int test_write_add() {
 
 // additional mkdir test
 static int test_mkdir_add(void) {
-    const char *data = testdata;
-    int datalen = testdatalen;
+    char dirpath[64];
     int res;
-    int fd;
+
+    // construct dir path
+    strcpy(dirpath, "");
+    strcat(dirpath, testdir2);
+    strcat(dirpath, "/testdir");
 
     start_test("mkdir additional")
  
@@ -2111,19 +2114,14 @@ static int test_mkdir_add(void) {
         return -1;
     }
 
-    char dirname[80];
-    strcpy(dirname, "");
-    strcat(dirname, testdir2);
-    strcat(dirname, "/testdir");    
- 
-    res = mkdir(dirname, 0755);
+    res = mkdir(dirpath, 0755);
     if (res != -1) {
-        ERROR("should not create nested dir %s at once", dirname);
+        ERROR("should not create nested dir %s at once", dirpath);
         return -1;
     }
-    res = check_nonexist(dirname);
+    res = check_nonexist(dirpath);
     if (res == -1) {
-        ERROR("%s should not exist", dirname);
+        ERROR("%s should not exist", dirpath);
         return -1;
     }
 
@@ -2133,33 +2131,33 @@ static int test_mkdir_add(void) {
         PERROR("mkdir");
         return -1;
     }
-    res = mkdir(dirname, 0755);
+    res = mkdir(dirpath, 0755);
     if (res == -1) {
-        ERROR("cannot create nested dir %s", dirname);   
+        ERROR("cannot create nested dir %s", dirpath);   
         return -1;
     }
-    res = check_type(dirname, S_IFDIR);
+    res = check_type(dirpath, S_IFDIR);
     if (res == -1) {
-        ERROR("%s not type directory", dirname);
+        ERROR("%s not type directory", dirpath);
         return -1;
     }
-    res = check_mode(dirname, 0755);
+    res = check_mode(dirpath, 0755);
     if (res == -1) {
         ERROR("mode != 0755");
         return -1;
     }
 
     // clean up folder
-    rmdir(dirname);
-    res = check_nonexist(dirname);
+    rmdir(dirpath);
+    res = check_nonexist(dirpath);
     if (res == -1) {
-        ERROR("%s should not exist", dirname);
+        ERROR("%s should not exist", dirpath);
         return -1;
     }     
     rmdir(testdir2);
-    res = check_nonexist(dirname);
+    res = check_nonexist(dirpath);
     if (res == -1) {
-        ERROR("%s should not exist", dirname);
+        ERROR("%s should not exist", dirpath);
         return -1;
     }
 
@@ -2170,11 +2168,203 @@ static int test_mkdir_add(void) {
     return 0;
 }
 
-
 // additional readdir test
 
 // additional rmdir test
+static int test_rmdir_add(void) {
+    char dirpath[64];
+    char filepath[64];
+    char filepath2[64];
+    const char *data = testdata;
+    int datalen = testdatalen;
+    int res;
 
+    // construct dirpath: testdir2/testdir
+    strcpy(dirpath, "");
+    strcat(dirpath, testdir2);
+    strcat(dirpath, "/testdir");
+
+    printf("dirpath: %s\n", dirpath);
+    // construct filepath: testdir/testfile
+    strcpy(filepath, "");
+    strcat(filepath, testdir);
+    strcat(filepath, "/testfile");
+
+    printf("filepath: %s\n", filepath);
+    // constrct filepath2: testdir2/testdir1/testfile
+    strcpy(filepath2, "");
+    strcat(filepath2, dirpath);
+    strcat(filepath2, "/testfile");
+
+    printf("filepath2: %s\n", filepath2);
+
+    start_test("rmdir additional")   
+
+    // remove empty dir
+    rmdir(testdir);
+    res = check_nonexist(testdir);
+    if (res == -1) {
+        ERROR("%s already exists", testdir);
+        return -1;
+    }
+    res = mkdir(testdir, 0755);
+    res = check_nonexist(testdir);
+    if (res != -1) {
+        ERROR("%s not created", testdir);
+        return -1;
+    }
+    res = rmdir(testdir);
+    if (res == -1) {
+        PERROR("rmdir");
+        return -1;
+    }
+    res = check_nonexist(testdir);
+    if (res == -1) {
+        ERROR("%s should be removed", testdir);
+        return -1;
+    }
+      
+    // remove non empty dir with file
+    res = mkdir(testdir, 775);
+    res = create_file(filepath, data, datalen);
+    if (res == -1) {
+        PERROR("create_file");
+        return -1;
+    }
+    res = check_nonexist(filepath);
+    if (res != -1) {
+        ERROR("%s not existed", filepath);
+        return -1;
+    }
+
+    // 1. remove dir directly should fail
+    res = rmdir(testdir);
+    if (res != -1) {
+        ERROR("should not remove non empty dir %s", testdir);
+        return -1;
+    }
+    res = check_nonexist(testdir);
+    if (res != -1) {
+        ERROR("%s not existed", testdir);
+        return -1;
+    }
+    res = check_nonexist(filepath);
+    if (res != -1) {
+        ERROR("%s not existed", filepath);
+        return -1;
+    }
+    res = check_data(filepath, data, 0, datalen);
+    if (res == -1) {
+        ERROR("content changed for file %s", filepath);
+        return -1;
+    } 
+
+    // 2. remove dir by remove file first 
+    res = unlink(filepath);
+    if (res == -1) {
+        PERROR("unlink");
+        return -1;
+    }
+    res = check_nonexist(filepath);
+    if (res == -1) {
+        ERROR("%s should be unlinked", filepath);
+        return -1;
+    }
+
+    res = rmdir(testdir);
+    if (res == -1) {
+        PERROR("rmdir");
+        return -1;
+    }
+    res = check_nonexist(testdir);
+    if (res == -1) {
+        ERROR("%s should be removed", testdir);
+        return -1;
+    }
+
+    // remove non empty dir with sub dir    
+    res = mkdir(testdir2, 775) + mkdir(dirpath, 775);
+    if (res != 0) {
+        ERROR("failed to created nested dir %s", dirpath);
+        return -1;
+    }
+    res = create_file(filepath2, data, datalen);
+    if (res == -1) {
+        ERROR("failed to create file %s", filepath2);
+        return -1;
+    }
+    
+    // 1. remove dir directly should fail
+    res = rmdir(testdir2);
+    if (res != -1) {
+        ERROR("should not remove non empty dir %s", testdir2);
+        return -1;
+    }
+    res = check_nonexist(testdir2) 
+        + check_nonexist(dirpath) 
+        + check_nonexist(filepath2);
+    if (res != -3) {
+        ERROR("file not exist");
+        return -1;
+    } 
+    
+    // 2. remove file, rmdir testdir2 should fail
+    res = unlink(filepath2);
+    if (res == -1) {
+        PERROR("unlink");
+        return -1;
+    }
+    res = check_nonexist(filepath2);
+    if (res == -1) {
+        ERROR("file should be unlinked %s", filepath2);
+        return -1;
+    }
+
+    res = rmdir(testdir2);
+    if (res != -1) {
+        ERROR("should not remove non empty dir %s", testdir2);
+        return -1;
+    }
+    res = check_nonexist(testdir2) + check_nonexist(dirpath);
+    if (res != -2) {
+        ERROR("file not existed");
+        return -1;
+    }
+
+    // 3. remove sub dir
+    res = rmdir(dirpath);
+    if (res == -1) {
+        PERROR("rmdir");
+        return -1;
+    }
+    res = check_nonexist(dirpath);
+    if (res == -1) {
+        ERROR("should be removed: %s", dirpath);
+        return -1;
+    }
+
+    // remove parent dir
+    res = check_nonexist(testdir2);
+    if (res != -1) {
+        ERROR("file not exist: %s", testdir2);
+        return -1;
+    }
+    res = rmdir(testdir2);
+    if (res == -1) {
+        PERROR("rmdir");
+        return -1;
+    }
+    res = check_nonexist(testdir2);
+    if (res == -1) {
+        ERROR("should be removed: %s", testdir2);
+        return -1;
+    }
+
+    // avoid unlink error
+    mkdir(testdir2, 775);
+    success();
+    return 0;
+}
 
 
 int main(int argc, char *argv[])
@@ -2310,6 +2500,7 @@ int main(int argc, char *argv[])
     err += test_read_add();
     err += test_write_add();
     err += test_mkdir_add();
+    err += test_rmdir_add();
 
     unlink(testfile);
     unlink(testfile2);
