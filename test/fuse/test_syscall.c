@@ -2218,6 +2218,7 @@ static int test_readdir_add(void) {
 
     strcpy(filepath2, dirpath2);
     strcat(filepath2, "/testfile2");
+    
     /*
     printf("parentdir: %s\n", parentdir);
     printf("dirpath1: %s\n", dirpath1);
@@ -2225,17 +2226,36 @@ static int test_readdir_add(void) {
     printf("filepath1: %s\n", filepath1);
     printf("filepath2: %s\n", filepath2);
     */
+
     // create dir and file
     unlink(filepath1);
     unlink(filepath2);
     rmdir(dirpath1);
     rmdir(dirpath2);
     rmdir(parentdir);
-    res = check_nonexist(parentdir) + check_nonexist(dirpath1)
-        + check_nonexist(dirpath2) + check_nonexist(filepath1)
-        + check_nonexist(filepath2);
+    res = check_nonexist(parentdir);
+    if (res == -1) {
+        ERROR("%s should not exist", parentdir);
+        return -1;
+    }
+    res = check_nonexist(dirpath1);
+    if (res == -1) {
+        ERROR("%s should not exist", dirpath1);
+        return -1;
+    }
+    res = check_nonexist(dirpath2);
+    if (res == -1) {
+        ERROR("%s should not exist", dirpath2);
+        return -1;
+    }
+    res = check_nonexist(filepath1);
+    if (res == -1) {
+        ERROR("%s should not exist", filepath1);
+        return -1;
+    }
+    res = check_nonexist(filepath2);
     if (res != 0) {
-        ERROR("file already exist");
+        ERROR("%s should not exist", filepath2);
         return -1;
     }
 
@@ -2254,7 +2274,7 @@ static int test_readdir_add(void) {
         return -1;
     }
 
-    start_test("readdir");
+    start_test("readdir additional");
 
     // read parentdir
     if ((dir1 = opendir(parentdir)) == NULL) {
@@ -2275,8 +2295,11 @@ static int test_readdir_add(void) {
             }
             closedir(dir2);
         }
-        if (count != 6) {
-            ERROR("incorrect file number: %d instead of 6", count);
+    
+        // testfile, testdir, testdir2, ., .., testdir2/testfile2
+        // testdir2/., testdir2/..
+        if (count != 8) {
+            ERROR("incorrect file number: %d instead of 8", count);
             return -1;
         }
     }   
@@ -2287,11 +2310,29 @@ static int test_readdir_add(void) {
     rmdir(dirpath1);
     rmdir(dirpath2);
     rmdir(parentdir);
-    res = check_nonexist(parentdir) + check_nonexist(dirpath1)
-        + check_nonexist(dirpath2) + check_nonexist(filepath1)
-        + check_nonexist(filepath2);
+    res = check_nonexist(parentdir);
+    if (res == -1) {
+        ERROR("here %s should not exist", parentdir);
+        return -1;
+    }
+    res = check_nonexist(dirpath1);
+    if (res == -1) {
+        ERROR("%s should not exist", dirpath1);
+        return -1;
+    }
+    res = check_nonexist(dirpath2);
+    if (res == -1) {
+        ERROR("%s should not exist", dirpath2);
+        return -1;
+    }
+    res = check_nonexist(filepath1);
+    if (res == -1) {
+        ERROR("%s should not exist", filepath1);
+        return -1;
+    }
+    res = check_nonexist(filepath2);
     if (res != 0) {
-        ERROR("file already exist");
+        ERROR("%s should not exist", filepath2);
         return -1;
     }
 
@@ -2642,8 +2683,8 @@ int main(int argc, char *argv[])
     err += test_read_add();
     err += test_write_add();
     err += test_mkdir_add();
-    err += test_readdir_add();
     err += test_rmdir_add();
+    err += test_readdir_add();
 
     unlink(testfile);
     unlink(testfile2);
