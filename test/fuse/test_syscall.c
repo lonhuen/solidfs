@@ -126,43 +126,12 @@ static int check_size(const char *path, int len)
     return 0;
 }
 
-static int fcheck_size(int fd, int len)
-{
-    struct stat stbuf;
-    int res = fstat(fd, &stbuf);
-    if (res == -1) {
-        PERROR("fstat");
-        return -1;
-    }
-    if (stbuf.st_size != len) {
-        ERROR("length %u instead of %u", (int) stbuf.st_size,
-              (int) len);
-        return -1;
-    }
-    return 0;
-}
-
 static int check_type(const char *path, mode_t type)
 {
     struct stat stbuf;
     int res = lstat(path, &stbuf);
     if (res == -1) {
         PERROR("lstat");
-        return -1;
-    }
-    if ((stbuf.st_mode & S_IFMT) != type) {
-        ERROR("type 0%o instead of 0%o", stbuf.st_mode & S_IFMT, type);
-        return -1;
-    }
-    return 0;
-}
-
-static int fcheck_type(int fd, mode_t type)
-{
-    struct stat stbuf;
-    int res = fstat(fd, &stbuf);
-    if (res == -1) {
-        PERROR("fstat");
         return -1;
     }
     if ((stbuf.st_mode & S_IFMT) != type) {
@@ -188,70 +157,6 @@ static int check_mode(const char *path, mode_t mode)
     return 0;
 }
 
-static int fcheck_mode(int fd, mode_t mode)
-{
-    struct stat stbuf;
-    int res = fstat(fd, &stbuf);
-    if (res == -1) {
-        PERROR("fstat");
-        return -1;
-    }
-    if ((stbuf.st_mode & ALLPERMS) != mode) {
-        ERROR("mode 0%o instead of 0%o", stbuf.st_mode & ALLPERMS,
-              mode);
-        return -1;
-    }
-    return 0;
-}
-
-static int check_times(const char *path, time_t atime, time_t mtime)
-{
-    int err = 0;
-    struct stat stbuf;
-    int res = lstat(path, &stbuf);
-    if (res == -1) {
-        PERROR("lstat");
-        return -1;
-    }
-    if (stbuf.st_atime != atime) {
-        ERROR("atime %li instead of %li", stbuf.st_atime, atime);
-        err--;
-    }
-    if (stbuf.st_mtime != mtime) {
-        ERROR("mtime %li instead of %li", stbuf.st_mtime, mtime);
-        err--;
-    }
-    if (err)
-        return -1;
-
-    return 0;
-}
-
-#if 0
-static int fcheck_times(int fd, time_t atime, time_t mtime)
-{
-    int err = 0;
-    struct stat stbuf;
-    int res = fstat(fd, &stbuf);
-    if (res == -1) {
-        PERROR("fstat");
-        return -1;
-    }
-    if (stbuf.st_atime != atime) {
-        ERROR("atime %li instead of %li", stbuf.st_atime, atime);
-        err--;
-    }
-    if (stbuf.st_mtime != mtime) {
-        ERROR("mtime %li instead of %li", stbuf.st_mtime, mtime);
-        err--;
-    }
-    if (err)
-        return -1;
-
-    return 0;
-}
-#endif
-
 static int check_nlink(const char *path, nlink_t nlink)
 {
     struct stat stbuf;
@@ -268,20 +173,16 @@ static int check_nlink(const char *path, nlink_t nlink)
     return 0;
 }
 
-static int fcheck_nlink(int fd, nlink_t nlink)
-{
+// helper function to check if file exists
+static int check_exist(const char *path) {
     struct stat stbuf;
-    int res = fstat(fd, &stbuf);
-    if (res == -1) {
-        PERROR("fstat");
+    int res = lstat(path, &stbuf);
+    if (res == 0) {  // file exists
+        return 0;
+    } else {
+        ERROR("file not exist");
         return -1;
     }
-    if (stbuf.st_nlink != nlink) {
-        ERROR("nlink %li instead of %li", (long) stbuf.st_nlink,
-              (long) nlink);
-        return -1;
-    }
-    return 0;
 }
 
 static int check_nonexist(const char *path)
@@ -347,35 +248,6 @@ static int check_data(const char *path, const char *data, int offset,
     if (res == -1) {
         PERROR("close");
         return -1;
-    }
-    return 0;
-}
-
-static int fcheck_data(int fd, const char *data, int offset,
-               unsigned len)
-{
-    char buf[4096];
-    int res;
-    if (lseek(fd, offset, SEEK_SET) == (off_t) -1) {
-        PERROR("lseek");
-        return -1;
-    }
-    while (len) {
-        int rdlen = len < sizeof(buf) ? len : sizeof(buf);
-        res = read(fd, buf, rdlen);
-        if (res == -1) {
-            PERROR("read");
-            return -1;
-        }
-        if (res != rdlen) {
-            ERROR("short read: %u instead of %u", res, rdlen);
-            return -1;
-        }
-        if (check_buffer(buf, data, rdlen) != 0) {
-            return -1;
-        }
-        data += rdlen;
-        len -= rdlen;
     }
     return 0;
 }
@@ -522,42 +394,6 @@ static int cleanup_dir(const char *path, const char **dir_files, int quiet)
     return 0;
 }
 
-static int create_dir(const char *path, const char **dir_files)
-{
-    int res;
-    int i;
-
-    rmdir(path);
-    res = mkdir(path, 0755);
-    if (res == -1) {
-        PERROR("mkdir");
-        return -1;
-    }
-    res = check_type(path, S_IFDIR);
-    if (res == -1)
-        return -1;
-    res = check_mode(path, 0755);
-    if (res == -1)
-        return -1;
-
-    for (i = 0; dir_files[i]; i++) {
-        char fpath[1280];
-        sprintf(fpath, "%s/%s", path, dir_files[i]);
-        res = create_file(fpath, "", 0);
-        if (res == -1) {
-            cleanup_dir(path, dir_files, 1);
-            return -1;
-        }
-    }
-    res = check_dir_contents(path, dir_files);
-    if (res == -1) {
-        cleanup_dir(path, dir_files, 1);
-        return -1;
-    }
-
-    return 0;
-}
-
 static int test_truncate(int len)
 {
     const char *data = testdata;
@@ -600,367 +436,6 @@ static int test_truncate(int len)
     res = check_nonexist(testfile);
     if (res == -1)
         return -1;
-    success();
-    return 0;
-}
-
-static int test_ftruncate(int len, int mode)
-{
-    const char *data = testdata;
-    int datalen = testdatalen;
-    int res;
-    int fd;
-
-    start_test("ftruncate(%u) mode: 0%03o", len, mode);
-    res = create_file(testfile, data, datalen);
-    if (res == -1)
-        return -1;
-
-    fd = open(testfile, O_WRONLY);
-    if (fd == -1) {
-        PERROR("open");
-        return -1;
-    }
-
-    res = fchmod(fd, mode);
-    if (res == -1) {
-        PERROR("fchmod");
-        close(fd);
-        return -1;
-    }
-    res = check_mode(testfile, mode);
-    if (res == -1) {
-        close(fd);
-        return -1;
-    }
-    res = ftruncate(fd, len);
-    if (res == -1) {
-        PERROR("ftruncate");
-        close(fd);
-        return -1;
-    }
-    close(fd);
-    res = check_size(testfile, len);
-    if (res == -1)
-        return -1;
-
-    if (len > 0) {
-        if (len <= datalen) {
-            res = check_data(testfile, data, 0, len);
-            if (res == -1)
-                return -1;
-        } else {
-            res = check_data(testfile, data, 0, datalen);
-            if (res == -1)
-                return -1;
-            res = check_data(testfile, zerodata, datalen,
-                     len - datalen);
-            if (res == -1)
-                return -1;
-        }
-    }
-    res = unlink(testfile);
-    if (res == -1) {
-        PERROR("unlink");
-        return -1;
-    }
-    res = check_nonexist(testfile);
-    if (res == -1)
-        return -1;
-
-    success();
-    return 0;
-}
-
-static int test_seekdir(void)
-{
-    int i;
-    int res;
-    DIR *dp;
-    struct dirent *de;
-
-    start_test("seekdir");
-    res = create_dir(testdir, testdir_files);
-    if (res == -1)
-        return res;
-
-    dp = opendir(testdir);
-    if (dp == NULL) {
-        PERROR("opendir");
-        return -1;
-    }
-
-    /* Remember dir offsets */
-    for (i = 0; i < ARRAY_SIZE(seekdir_offsets); i++) {
-        seekdir_offsets[i] = telldir(dp);
-        errno = 0;
-        de = readdir(dp);
-        if (de == NULL) {
-            if (errno) {
-                PERROR("readdir");
-                goto fail;
-            }
-            break;
-        }
-    }
-
-    /* Walk until the end of directory */
-    while (de)
-        de = readdir(dp);
-
-    /* Start from the last valid dir offset and seek backwards */
-    for (i--; i >= 0; i--) {
-        seekdir(dp, seekdir_offsets[i]);
-        de = readdir(dp);
-        if (de == NULL) {
-            ERROR("Unexpected end of directory after seekdir()");
-            goto fail;
-        }
-    }
-
-    closedir(dp);
-    res = cleanup_dir(testdir, testdir_files, 0);
-    if (!res)
-        success();
-    return res;
-fail:
-    closedir(dp);
-    cleanup_dir(testdir, testdir_files, 1);
-    return -1;
-}
-
-#ifdef HAVE_COPY_FILE_RANGE
-static int test_copy_file_range(void)
-{
-    const char *data = testdata;
-    int datalen = testdatalen;
-    int err = 0;
-    int res;
-    int fd_in, fd_out;
-    off_t pos_in = 0, pos_out = 0;
-
-    start_test("copy_file_range");
-    unlink(testfile);
-    fd_in = open(testfile, O_CREAT | O_RDWR, 0644);
-    if (fd_in == -1) {
-        PERROR("creat");
-        return -1;
-    }
-    res = write(fd_in, data, datalen);
-    if (res == -1) {
-        PERROR("write");
-        close(fd_in);
-        return -1;
-    }
-    if (res != datalen) {
-        ERROR("write is short: %u instead of %u", res, datalen);
-        close(fd_in);
-        return -1;
-    }
-
-    unlink(testfile2);
-    fd_out = creat(testfile2, 0644);
-    if (fd_out == -1) {
-        PERROR("creat");
-        close(fd_in);
-        return -1;
-    }
-    res = copy_file_range(fd_in, &pos_in, fd_out, &pos_out, datalen, 0);
-    if (res == -1) {
-        PERROR("copy_file_range");
-        close(fd_in);
-        close(fd_out);
-        return -1;
-    }
-    if (res != datalen) {
-        ERROR("copy is short: %u instead of %u", res, datalen);
-        close(fd_in);
-        close(fd_out);
-        return -1;
-    }
-
-    res = close(fd_in);
-    if (res == -1) {
-        PERROR("close");
-        return -1;
-    }
-    res = close(fd_out);
-    if (res == -1) {
-        PERROR("close");
-        return -1;
-    }
-
-    err = check_data(testfile2, data, 0, datalen);
-
-    res = unlink(testfile);
-    if (res == -1) {
-        PERROR("unlink");
-        return -1;
-    }
-    res = check_nonexist(testfile);
-    if (res == -1)
-        return -1;
-    if (err)
-        return -1;
-
-    res = unlink(testfile2);
-    if (res == -1) {
-        PERROR("unlink");
-        return -1;
-    }
-    res = check_nonexist(testfile2);
-    if (res == -1)
-        return -1;
-    if (err)
-        return -1;
-
-    success();
-    return 0;
-}
-#else
-static int test_copy_file_range(void)
-{
-    return 0;
-}
-#endif
-
-static int test_utime(void)
-{
-    struct utimbuf utm;
-    time_t atime = 987631200;
-    time_t mtime = 123116400;
-    int res;
-
-    start_test("utime");
-    res = create_file(testfile, NULL, 0);
-    if (res == -1)
-        return -1;
-
-    utm.actime = atime;
-    utm.modtime = mtime;
-    res = utime(testfile, &utm);
-    if (res == -1) {
-        PERROR("utime");
-        return -1;
-    }
-    res = check_times(testfile, atime, mtime);
-    if (res == -1) {
-        return -1;
-    }
-    res = unlink(testfile);
-    if (res == -1) {
-        PERROR("unlink");
-        return -1;
-    }
-    res = check_nonexist(testfile);
-    if (res == -1)
-        return -1;
-
-    success();
-    return 0;
-}
-
-static int test_create(void)
-{
-    const char *data = testdata;
-    int datalen = testdatalen;
-    int err = 0;
-    int res;
-    int fd;
-
-    start_test("create");
-    unlink(testfile);
-    fd = creat(testfile, 0644);
-    if (fd == -1) {
-        PERROR("creat");
-        return -1;
-    }
-    res = write(fd, data, datalen);
-    if (res == -1) {
-        PERROR("write");
-        close(fd);
-        return -1;
-    }
-    if (res != datalen) {
-        ERROR("write is short: %u instead of %u", res, datalen);
-        close(fd);
-        return -1;
-    }
-    res = close(fd);
-    if (res == -1) {
-        PERROR("close");
-        return -1;
-    }
-    res = check_type(testfile, S_IFREG);
-    if (res == -1)
-        return -1;
-    err += check_mode(testfile, 0644);
-    err += check_nlink(testfile, 1);
-    err += check_size(testfile, datalen);
-    err += check_data(testfile, data, 0, datalen);
-    res = unlink(testfile);
-    if (res == -1) {
-        PERROR("unlink");
-        return -1;
-    }
-    res = check_nonexist(testfile);
-    if (res == -1)
-        return -1;
-    if (err)
-        return -1;
-
-    success();
-    return 0;
-}
-
-static int test_create_unlink(void)
-{
-    const char *data = testdata;
-    int datalen = testdatalen;
-    int err = 0;
-    int res;
-    int fd;
-
-    start_test("create+unlink");
-    unlink(testfile);
-    fd = open(testfile, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd == -1) {
-        PERROR("creat");
-        return -1;
-    }
-    res = unlink(testfile);
-    if (res == -1) {
-        PERROR("unlink");
-        close(fd);
-        return -1;
-    }
-    res = check_nonexist(testfile);
-    if (res == -1)
-        return -1;
-    res = write(fd, data, datalen);
-    if (res == -1) {
-        PERROR("write");
-        close(fd);
-        return -1;
-    }
-    if (res != datalen) {
-        ERROR("write is short: %u instead of %u", res, datalen);
-        close(fd);
-        return -1;
-    }
-    err += fcheck_type(fd, S_IFREG);
-    err += fcheck_mode(fd, 0644);
-    err += fcheck_nlink(fd, 0);
-    err += fcheck_size(fd, datalen);
-    err += fcheck_data(fd, data, 0, datalen);
-    res = close(fd);
-    if (res == -1) {
-        PERROR("close");
-        err--;
-    }
-    if (err)
-        return -1;
-
     success();
     return 0;
 }
@@ -1158,552 +633,6 @@ succ:
     return 0;
 }
 
-#define test_open_acc(flags, mode, err)  \
-    do_test_open_acc(flags, #flags, mode, err)
-
-static int do_test_open_acc(int flags, const char *flags_str, int mode, int err)
-{
-    const char *data = testdata;
-    int datalen = testdatalen;
-    int res;
-    int fd;
-
-    start_test("open_acc(%s) mode: 0%03o message: '%s'", flags_str, mode,
-           strerror(err));
-    unlink(testfile);
-    res = create_file(testfile, data, datalen);
-    if (res == -1)
-        return -1;
-
-    res = chmod(testfile, mode);
-    if (res == -1) {
-        PERROR("chmod");
-        return -1;
-    }
-
-    res = check_mode(testfile, mode);
-    if (res == -1)
-        return -1;
-
-    fd = open(testfile, flags);
-    if (fd == -1) {
-        if (err != errno) {
-            PERROR("open");
-            return -1;
-        }
-    } else {
-        if (err) {
-            ERROR("open should have failed");
-            close(fd);
-            return -1;
-        }
-        close(fd);
-    }
-    success();
-    return 0;
-}
-
-static int test_symlink(void)
-{
-    char buf[1024];
-    const char *data = testdata;
-    int datalen = testdatalen;
-    int linklen = strlen(testfile);
-    int err = 0;
-    int res;
-
-    start_test("symlink");
-    res = create_file(testfile, data, datalen);
-    if (res == -1)
-        return -1;
-
-    unlink(testfile2);
-    res = symlink(testfile, testfile2);
-    if (res == -1) {
-        PERROR("symlink");
-        return -1;
-    }
-    res = check_type(testfile2, S_IFLNK);
-    if (res == -1)
-        return -1;
-    err += check_mode(testfile2, 0777);
-    err += check_nlink(testfile2, 1);
-    res = readlink(testfile2, buf, sizeof(buf));
-    if (res == -1) {
-        PERROR("readlink");
-        err--;
-    }
-    if (res != linklen) {
-        ERROR("short readlink: %u instead of %u", res, linklen);
-        err--;
-    }
-    if (memcmp(buf, testfile, linklen) != 0) {
-        ERROR("link mismatch");
-        err--;
-    }
-    err += check_size(testfile2, datalen);
-    err += check_data(testfile2, data, 0, datalen);
-    res = unlink(testfile2);
-    if (res == -1) {
-        PERROR("unlink");
-        return -1;
-    }
-    res = check_nonexist(testfile2);
-    if (res == -1)
-        return -1;
-    if (err)
-        return -1;
-
-    success();
-    return 0;
-}
-
-static int test_link(void)
-{
-    const char *data = testdata;
-    int datalen = testdatalen;
-    int err = 0;
-    int res;
-
-    start_test("link");
-    res = create_file(testfile, data, datalen);
-    if (res == -1)
-        return -1;
-
-    unlink(testfile2);
-    res = link(testfile, testfile2);
-    if (res == -1) {
-        PERROR("link");
-        return -1;
-    }
-    res = check_type(testfile2, S_IFREG);
-    if (res == -1)
-        return -1;
-    err += check_mode(testfile2, 0644);
-    err += check_nlink(testfile2, 2);
-    err += check_size(testfile2, datalen);
-    err += check_data(testfile2, data, 0, datalen);
-    res = unlink(testfile);
-    if (res == -1) {
-        PERROR("unlink");
-        return -1;
-    }
-    res = check_nonexist(testfile);
-    if (res == -1)
-        return -1;
-
-    err += check_nlink(testfile2, 1);
-    res = unlink(testfile2);
-    if (res == -1) {
-        PERROR("unlink");
-        return -1;
-    }
-    res = check_nonexist(testfile2);
-    if (res == -1)
-        return -1;
-    if (err)
-        return -1;
-
-    success();
-    return 0;
-}
-
-static int test_link2(void)
-{
-    const char *data = testdata;
-    int datalen = testdatalen;
-    int err = 0;
-    int res;
-
-    start_test("link-unlink-link");
-    res = create_file(testfile, data, datalen);
-    if (res == -1)
-        return -1;
-
-    unlink(testfile2);
-    res = link(testfile, testfile2);
-    if (res == -1) {
-        PERROR("link");
-        return -1;
-    }
-    res = unlink(testfile);
-    if (res == -1) {
-        PERROR("unlink");
-        return -1;
-    }
-    res = check_nonexist(testfile);
-    if (res == -1)
-        return -1;
-    res = link(testfile2, testfile);
-    if (res == -1) {
-        PERROR("link");
-    }
-    res = check_type(testfile, S_IFREG);
-    if (res == -1)
-        return -1;
-    err += check_mode(testfile, 0644);
-    err += check_nlink(testfile, 2);
-    err += check_size(testfile, datalen);
-    err += check_data(testfile, data, 0, datalen);
-
-    res = unlink(testfile2);
-    if (res == -1) {
-        PERROR("unlink");
-        return -1;
-    }
-    err += check_nlink(testfile, 1);
-    res = unlink(testfile);
-    if (res == -1) {
-        PERROR("unlink");
-        return -1;
-    }
-    res = check_nonexist(testfile);
-    if (res == -1)
-        return -1;
-    if (err)
-        return -1;
-
-    success();
-    return 0;
-}
-
-static int test_rename_file(void)
-{
-    const char *data = testdata;
-    int datalen = testdatalen;
-    int err = 0;
-    int res;
-
-    start_test("rename file");
-    res = create_file(testfile, data, datalen);
-    if (res == -1)
-        return -1;
-
-    unlink(testfile2);
-    res = rename(testfile, testfile2);
-    if (res == -1) {
-        PERROR("rename");
-        return -1;
-    }
-    res = check_nonexist(testfile);
-    if (res == -1)
-        return -1;
-    res = check_type(testfile2, S_IFREG);
-    if (res == -1)
-        return -1;
-    err += check_mode(testfile2, 0644);
-    err += check_nlink(testfile2, 1);
-    err += check_size(testfile2, datalen);
-    err += check_data(testfile2, data, 0, datalen);
-    res = unlink(testfile2);
-    if (res == -1) {
-        PERROR("unlink");
-        return -1;
-    }
-    res = check_nonexist(testfile2);
-    if (res == -1)
-        return -1;
-    if (err)
-        return -1;
-
-    success();
-    return 0;
-}
-
-static int test_rename_dir(void)
-{
-    int err = 0;
-    int res;
-
-    start_test("rename dir");
-    res = create_dir(testdir, testdir_files);
-    if (res == -1)
-        return -1;
-
-    rmdir(testdir2);
-    res = rename(testdir, testdir2);
-    if (res == -1) {
-        PERROR("rename");
-        cleanup_dir(testdir, testdir_files, 1);
-        return -1;
-    }
-    res = check_nonexist(testdir);
-    if (res == -1) {
-        cleanup_dir(testdir, testdir_files, 1);
-        return -1;
-    }
-    res = check_type(testdir2, S_IFDIR);
-    if (res == -1) {
-        cleanup_dir(testdir2, testdir_files, 1);
-        return -1;
-    }
-    err += check_mode(testdir2, 0755);
-    err += check_dir_contents(testdir2, testdir_files);
-    err += cleanup_dir(testdir2, testdir_files, 0);
-    res = rmdir(testdir2);
-    if (res == -1) {
-        PERROR("rmdir");
-        return -1;
-    }
-    res = check_nonexist(testdir2);
-    if (res == -1)
-        return -1;
-    if (err)
-        return -1;
-
-    success();
-    return 0;
-}
-
-static int test_rename_dir_loop(void)
-{
-#define PATH(p)     (snprintf(path, sizeof path, "%s/%s", testdir, p), path)
-#define PATH2(p)    (snprintf(path2, sizeof path2, "%s/%s", testdir, p), path2)
-
-    char path[1280], path2[1280];
-    int err = 0;
-    int res;
-
-    start_test("rename dir loop");
-
-    res = create_dir(testdir, testdir_files);
-    if (res == -1)
-        return -1;
-
-    res = mkdir(PATH("a"), 0755);
-    if (res == -1) {
-        PERROR("mkdir");
-        goto fail;
-    }
-
-    res = rename(PATH("a"), PATH2("a"));
-    if (res == -1) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    errno = 0;
-    res = rename(PATH("a"), PATH2("a/b"));
-    if (res == 0 || errno != EINVAL) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    res = mkdir(PATH("a/b"), 0755);
-    if (res == -1) {
-        PERROR("mkdir");
-        goto fail;
-    }
-
-    res = mkdir(PATH("a/b/c"), 0755);
-    if (res == -1) {
-        PERROR("mkdir");
-        goto fail;
-    }
-
-    errno = 0;
-    res = rename(PATH("a"), PATH2("a/b/c"));
-    if (res == 0 || errno != EINVAL) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    errno = 0;
-    res = rename(PATH("a"), PATH2("a/b/c/a"));
-    if (res == 0 || errno != EINVAL) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    errno = 0;
-    res = rename(PATH("a/b/c"), PATH2("a"));
-    if (res == 0 || errno != ENOTEMPTY) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    res = open(PATH("a/foo"), O_CREAT, 0644);
-    if (res == -1) {
-        PERROR("open");
-        goto fail;
-    }
-    close(res);
-
-    res = rename(PATH("a/foo"), PATH2("a/bar"));
-    if (res == -1) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    res = rename(PATH("a/bar"), PATH2("a/foo"));
-    if (res == -1) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    res = rename(PATH("a/foo"), PATH2("a/b/bar"));
-    if (res == -1) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    res = rename(PATH("a/b/bar"), PATH2("a/foo"));
-    if (res == -1) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    res = rename(PATH("a/foo"), PATH2("a/b/c/bar"));
-    if (res == -1) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    res = rename(PATH("a/b/c/bar"), PATH2("a/foo"));
-    if (res == -1) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    res = open(PATH("a/bar"), O_CREAT, 0644);
-    if (res == -1) {
-        PERROR("open");
-        goto fail;
-    }
-    close(res);
-
-    res = rename(PATH("a/foo"), PATH2("a/bar"));
-    if (res == -1) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    unlink(PATH("a/bar"));
-
-    res = rename(PATH("a/b"), PATH2("a/d"));
-    if (res == -1) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    res = rename(PATH("a/d"), PATH2("a/b"));
-    if (res == -1) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    res = mkdir(PATH("a/d"), 0755);
-    if (res == -1) {
-        PERROR("mkdir");
-        goto fail;
-    }
-
-    res = rename(PATH("a/b"), PATH2("a/d"));
-    if (res == -1) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    res = rename(PATH("a/d"), PATH2("a/b"));
-    if (res == -1) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    res = mkdir(PATH("a/d"), 0755);
-    if (res == -1) {
-        PERROR("mkdir");
-        goto fail;
-    }
-
-    res = mkdir(PATH("a/d/e"), 0755);
-    if (res == -1) {
-        PERROR("mkdir");
-        goto fail;
-    }
-
-    errno = 0;
-    res = rename(PATH("a/b"), PATH2("a/d"));
-    if (res == 0 || errno != ENOTEMPTY) {
-        PERROR("rename");
-        goto fail;
-    }
-
-    rmdir(PATH("a/d/e"));
-    rmdir(PATH("a/d"));
-
-    rmdir(PATH("a/b/c"));
-    rmdir(PATH("a/b"));
-    rmdir(PATH("a"));
-
-    err += cleanup_dir(testdir, testdir_files, 0);
-    res = rmdir(testdir);
-    if (res == -1) {
-        PERROR("rmdir");
-        goto fail;
-    }
-    res = check_nonexist(testdir);
-    if (res == -1)
-        return -1;
-    if (err)
-        return -1;
-
-    success();
-    return 0;
-
-fail:
-    unlink(PATH("a/bar"));
-
-    rmdir(PATH("a/d/e"));
-    rmdir(PATH("a/d"));
- 
-    rmdir(PATH("a/b/c"));
-    rmdir(PATH("a/b"));
-    rmdir(PATH("a"));
-
-    cleanup_dir(testdir, testdir_files, 1);
-    rmdir(testdir);
-
-    return -1;
-
-#undef PATH2
-#undef PATH
-}
-
-#ifndef __FreeBSD__
-static int test_mkfifo(void)
-{
-    int res;
-    int err = 0;
-
-    start_test("mkfifo");
-    unlink(testfile);
-    res = mkfifo(testfile, 0644);
-    if (res == -1) {
-        PERROR("mkfifo");
-        return -1;
-    }
-    res = check_type(testfile, S_IFIFO);
-    if (res == -1)
-        return -1;
-    err += check_mode(testfile, 0644);
-    err += check_nlink(testfile, 1);
-    res = unlink(testfile);
-    if (res == -1) {
-        PERROR("unlink");
-        return -1;
-    }
-    res = check_nonexist(testfile);
-    if (res == -1)
-        return -1;
-    if (err)
-        return -1;
-
-    success();
-    return 0;
-}
-#endif
-
 static int test_mkdir(void)
 {
     int res;
@@ -1740,111 +669,8 @@ static int test_mkdir(void)
     return 0;
 }
 
-static int test_socket(void)
-{
-    struct sockaddr_un su;
-    int fd;
-    int res;
-    int err = 0;
-
-    start_test("socket");
-    if (strlen(testsock) + 1 > sizeof(su.sun_path)) {
-        fprintf(stderr, "Need to shorten mount point by %lu chars\n",
-            strlen(testsock) + 1 - sizeof(su.sun_path));
-        return -1;
-    }
-    unlink(testsock);
-    fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (fd < 0) {
-        PERROR("socket");
-        return -1;
-    }
-    su.sun_family = AF_UNIX;
-    strncpy(su.sun_path, testsock, sizeof(su.sun_path) - 1);
-    su.sun_path[sizeof(su.sun_path) - 1] = '\0';
-    res = bind(fd, (struct sockaddr*)&su, sizeof(su));
-    if (res == -1) {
-        PERROR("bind");
-        return -1;
-    }
-
-    res = check_type(testsock, S_IFSOCK);
-    if (res == -1)
-        return -1;
-    err += check_nlink(testsock, 1);
-    close(fd);
-    res = unlink(testsock);
-    if (res == -1) {
-        PERROR("unlink");
-        return -1;
-    }
-    res = check_nonexist(testsock);
-    if (res == -1)
-        return -1;
-    if (err)
-        return -1;
-
-    success();
-    return 0;
-}
-
-#define test_create_ro_dir(flags)    \
-    do_test_create_ro_dir(flags, #flags)
-
-static int do_test_create_ro_dir(int flags, const char *flags_str)
-{
-    int res;
-    int err = 0;
-    int fd;
-
-    start_test("open(%s) in read-only directory", flags_str);
-    rmdir(testdir);
-    res = mkdir(testdir, 0555);
-    if (res == -1) {
-        PERROR("mkdir");
-        return -1;
-    }
-    fd = open(subfile, flags, 0644);
-    if (fd != -1) {
-        close(fd);
-        unlink(subfile);
-        ERROR("open should have failed");
-        err--;
-    } else {
-        res = check_nonexist(subfile);
-        if (res == -1)
-            err--;
-    }
-    unlink(subfile);
-    res = rmdir(testdir);
-    if (res == -1) {
-        PERROR("rmdir");
-        return -1;
-    }
-    res = check_nonexist(testdir);
-    if (res == -1)
-        return -1;
-    if (err)
-        return -1;
-
-    success();
-    return 0;
-}
-
-// helper function to check if file exists
-static int check_exist(const char *path) {
-    struct stat stbuf;
-    int res = lstat(path, &stbuf);
-    if (res == 0) {  // file exists
-        return 0;
-    } else {
-        ERROR("file not exist");
-        return -1;
-    }
-}
-
 // additional read test
-static int test_read_add(void) {
+static int test_read_seek(void) {
     const char *data = testdata;
     int datalen = testdatalen;
     int res;
@@ -1855,7 +681,7 @@ static int test_read_add(void) {
     int readlen;
     int offset;
 
-    start_test("read additional");
+    start_test("read & seek");
 
     // read from 0 to readlen <= datalen
     res = create_file(testfile, data, datalen);
@@ -2030,7 +856,7 @@ static int test_read_add(void) {
 
 
 // additional write test
-static int test_write_add() {
+static int test_write() {
     const char *data = testdata;
     int datalen = testdatalen;
     int res;
@@ -2041,7 +867,7 @@ static int test_write_add() {
     int writelen;
     int offset;
 
-    start_test("write additional");
+    start_test("write");
 
     // write new file
     res = create_file(testfile, data, datalen);
@@ -2091,10 +917,6 @@ static int test_write_add() {
     success();
     return 0;
 }
-
-// additional seek test (in test_read_add)
-
-// additional unlink test (in test_rmdir_add)
 
 // additional mkdir test
 static int test_mkdir_add(void) {
@@ -2187,7 +1009,7 @@ static int test_mkdir_add(void) {
 }
 
 // additional readdir test
-static int test_readdir_add(void) {
+static int test_readdir(void) {
     char parentdir[64];  // temp/testdir/
     char dirpath1[64];   // temp/testdir/testdir -- empty dir
     char dirpath2[64];   // temp/testdir/testdir2/ 
@@ -2218,14 +1040,6 @@ static int test_readdir_add(void) {
 
     strcpy(filepath2, dirpath2);
     strcat(filepath2, "/testfile2");
-    
-    /*
-    printf("parentdir: %s\n", parentdir);
-    printf("dirpath1: %s\n", dirpath1);
-    printf("dirpath2: %s\n", dirpath2);
-    printf("filepath1: %s\n", filepath1);
-    printf("filepath2: %s\n", filepath2);
-    */
 
     // create dir and file
     unlink(filepath1);
@@ -2274,7 +1088,7 @@ static int test_readdir_add(void) {
         return -1;
     }
 
-    start_test("readdir additional");
+    start_test("readdir");
 
     // read parentdir
     if ((dir1 = opendir(parentdir)) == NULL) {
@@ -2341,7 +1155,7 @@ static int test_readdir_add(void) {
 }
 
 // additional rmdir test
-static int test_rmdir_add(void) {
+static int test_rmdir_unlink(void) {
     char dirpath[64];
     char filepath[64];
     char filepath2[64];
@@ -2364,7 +1178,7 @@ static int test_rmdir_add(void) {
     strcat(filepath2, dirpath);
     strcat(filepath2, "/testfile");
 
-    start_test("rmdir additional")   
+    start_test("rmdir & unlink")   
     
     // remove empty dir
     unlink(filepath);
@@ -2543,7 +1357,7 @@ static int test_rmdir_add(void) {
         ERROR("should be removed: %s", testdir2);
         return -1;
     }
-
+    
     // pass all tests
     success();
     return 0;
@@ -2604,37 +1418,17 @@ int main(int argc, char *argv[])
     sprintf(subfile_r, "%s/subfile", testdir2_r);
 
     is_root = (geteuid() == 0);
-
-    //err += test_create();
-    //err += test_create_unlink();
-    //err += test_symlink();
-    //err += test_link();
-    //err += test_link2();
+    
 #ifndef __FreeBSD__ 
     err += test_mknod();
-    //err += test_mkfifo();
 #endif
     err += test_mkdir();
-    //err += test_rename_file();
-    //err += test_rename_dir();
-    //err += test_rename_dir_loop();
-    //err += test_seekdir();
-    //err += test_socket();
-    //err += test_utime();
        
     err += test_truncate(0);
     err += test_truncate(testdatalen / 2);
     err += test_truncate(testdatalen);
     err += test_truncate(testdatalen + 100);
-    
-    //err += test_ftruncate(0, 0600);
-    //err += test_ftruncate(testdatalen / 2, 0600);
-    //err += test_ftruncate(testdatalen, 0600);
-    //err += test_ftruncate(testdatalen + 100, 0600);
-    //err += test_ftruncate(0, 0400);
-    //err += test_ftruncate(0, 0200);
-    //err += test_ftruncate(0, 0000);
-    
+
     err += test_open(0, O_RDONLY, 0);
     err += test_open(1, O_RDONLY, 0);
     err += test_open(1, O_RDWR, 0);
@@ -2659,36 +1453,14 @@ int main(int argc, char *argv[])
     err += test_open(0, O_RDWR | O_CREAT | O_EXCL, 0000);
     err += test_open(1, O_RDWR | O_CREAT | O_EXCL, 0000);
     
-    //err += test_open_acc(O_RDONLY, 0600, 0);
-    //err += test_open_acc(O_WRONLY, 0600, 0);
-    //err += test_open_acc(O_RDWR,   0600, 0);
-    //err += test_open_acc(O_RDONLY, 0400, 0);
-    //err += test_open_acc(O_WRONLY, 0200, 0);
-    //if(!is_root) {
-    //    err += test_open_acc(O_RDONLY | O_TRUNC, 0400, EACCES);
-    //    err += test_open_acc(O_WRONLY, 0400, EACCES);
-    //    err += test_open_acc(O_RDWR,   0400, EACCES);
-    //    err += test_open_acc(O_RDONLY, 0200, EACCES);
-    //    err += test_open_acc(O_RDWR,   0200, EACCES);
-    //    err += test_open_acc(O_RDONLY, 0000, EACCES);
-    //    err += test_open_acc(O_WRONLY, 0000, EACCES);
-    //    err += test_open_acc(O_RDWR,   0000, EACCES);
-    //}
-    //err += test_create_ro_dir(O_CREAT);
-    //err += test_create_ro_dir(O_CREAT | O_EXCL);
-    //err += test_create_ro_dir(O_CREAT | O_WRONLY);
-    //err += test_create_ro_dir(O_CREAT | O_TRUNC);
-    //err += test_copy_file_range();
-    
-    err += test_read_add();
-    err += test_write_add();
+    err += test_read_seek();
+    err += test_write();
     err += test_mkdir_add();
-    err += test_rmdir_add();
-    err += test_readdir_add();
+    err += test_readdir();
+    err += test_rmdir_unlink();
 
     unlink(testfile);
     unlink(testfile2);
-    unlink(testsock);
     rmdir(testdir);
     rmdir(testdir2);
 
