@@ -227,10 +227,10 @@ namespace solid {
     TEST_F(FileSystemTest,WriteTest) {
         fs->mkfs();
         uint8_t buffer[] = "hello world";
-        uint8_t b[13];
-        fs->write(0,buffer,13,0);
-        fs->read(0,b,13,0);
-        for(auto i=0;i<13;i++) {
+        uint8_t b[12];
+        fs->write(0,buffer,12,0);
+        fs->read(0,b,12,0);
+        for(auto i=0;i<12;i++) {
             EXPECT_EQ(b[i],buffer[i]);
         }
         std::vector<uint64_t> test_len_array;
