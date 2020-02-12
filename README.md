@@ -2,12 +2,18 @@
 
 ## Get Started
 
+0. Test Environment
+
+   Instance type: m1.large
+
+   Image name: ubuntu-15.10
+
+   Architecture: x86_64
+
+
 1. Dependencies
-
-  * gcc, g++, make, autoconf, automake, libtool, meso(required)
-
+    * gcc, g++, make, autoconf, automake, libtool, meso(required)
     * Install
-  
       ``` shell
       sudo apt-get update
       sudo apt-get install gcc
@@ -15,18 +21,14 @@
       sudo apt-get install cmake
       sudo apt-get install autoconf automake libtool
       sudo apt-get install python3 python3-pip python3-setuptools python3-wheel
-    sudo apt-get install ninja-build
+      sudo apt-get install ninja-build
       sudo apt-get install pkg-config
-    pip3 install meson
-      ```
-    
+      pip3 install meson
     * Add meson to the `PATH`
-    
       ``` shell
       # Add meson to PATH
       export PATH=$PATH:~/.local/bin/
       ```
-    
     * If there is something wrong with `source.list`, consider replacing the `source.list`
     
       ``` shell
@@ -55,26 +57,20 @@
   make
   sudo make install
   ```
-
 * libFuse 3 (required)
-
   * Installation
-
-  ``` shell
-  git clone https://github.com/libfuse/libfuse.git
-  cd libfuse
-  mkdir build
-  cd build
-  meson ..
-  ninja
-  sudo python3 -m pytest test/
-  sudo ninja install
-  ```
-
+    ``` shell
+    git clone https://github.com/libfuse/libfuse.git
+    cd libfuse
+    mkdir build
+    cd build
+    meson ..
+    ninja
+    sudo python3 -m pytest test/
+    sudo ninja install
+    ```
   * Configuration
-
       * Open the file `/usr/local/etc/fuse.conf` and append `user_allow_other`
-
         ``` shell
         # The file /etc/fuse.conf allows for the following parameters:
         #
@@ -86,14 +82,10 @@
         # presence of the option.
         user_allow_other
         ```
-        
       * Library Path
       
         ``` shell
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/
-  ```
-      
-
 2. Run Solid File System
 
 ``` shell
