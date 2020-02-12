@@ -15,6 +15,9 @@ set(ENABLE_FUSE_TEST true)
 # http://rpg.ifi.uzh.ch/docs/glog.html
 
 find_package(GLOG REQUIRED)
+if (DEFINED ENV{GLOG_ROOT})
+  set(GLOG_ROOT $ENV{GTEST_ROOT})
+endif ()
 include_directories(${GLOG_INCLUDE_DIR})
 set(ExtLibs ${ExtLibs} ${GLOG_LIBRARY})
 message(${GLOG_INCLUDE_DIR})

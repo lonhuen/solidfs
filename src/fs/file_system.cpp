@@ -598,6 +598,7 @@ namespace solid {
                 continue;
             }
             write(inode.inode_number,buffer,ret,0);
+            truncate(inode.inode_number,ret);
             delete []buffer;
             break;
         }
