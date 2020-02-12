@@ -86,17 +86,17 @@
       
         ``` shell
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/
-2. Run Solid File System
+2. Run Solid File System (in build directory)
 
 ``` shell
-# creat the mount point
-# in build directory
+# creat the mount point in build directory
+cd build
 mkdir temp
 # run file system
 ./solidFS
 ```
 
-3. Run Tests
+3. Run Tests (all in build directory)
 
    open another terminal
 
@@ -106,12 +106,14 @@ mkdir temp
 
      ``` shell
      # syscall Tests
+     cd build
      sudo ./syscallTest `realpath temp`
      ```
 
    * Simple read and write test. The corresponding file is `test/fuse/file_operation_test.cpp`
 
      ``` shell
+     cd build
      sudo ./FuseTests
      ```
 
