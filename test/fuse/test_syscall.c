@@ -669,18 +669,6 @@ static int test_mkdir(void)
     return 0;
 }
 
-// helper function to check if file exists
-static int check_exist(const char *path) {
-    struct stat stbuf;
-    int res = lstat(path, &stbuf);
-    if (res == 0) {  // file exists
-        return 0;
-    } else {
-        ERROR("file not exist");
-        return -1;
-    }
-}
-
 // additional read test
 static int test_read_seek(void) {
     const char *data = testdata;
@@ -931,7 +919,7 @@ static int test_write() {
 }
 
 // additional mkdir test
-static int test_mkdir(void) {
+static int test_mkdir_add(void) {
     char dirpath[64];
     int res;
 
@@ -1467,7 +1455,7 @@ int main(int argc, char *argv[])
     
     err += test_read_seek();
     err += test_write();
-    err += test_mkdir();
+    err += test_mkdir_add();
     err += test_rmdir_unlink();
     err += test_readdir();
 
