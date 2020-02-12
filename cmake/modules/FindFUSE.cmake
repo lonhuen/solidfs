@@ -1,36 +1,15 @@
-if (APPLE)
-  find_path(FUSE_ROOT
-    NAMES include/osxfuse/fuse.h
-    HINTS /usr/local
-  )
-  find_path(FUSE_INCLUDE_DIR
-    NAMES fuse.h
-    HINTS ${FUSE_ROOT}/include/osxfuse
-  )
-else (APPLE)
-  find_path(FUSE_ROOT
-    NAMES include/fuse.h
-  )
-  find_path(FUSE_INCLUDE_DIR
-    NAMES fuse.h
-    HINTS ${FUSE_ROOT}/include
-  )
-endif(APPLE)
+find_path(FUSE_ROOT
+  NAMES include/fuse.h
+)
+find_path(FUSE_INCLUDE_DIR
+  NAMES fuse.h
+  HINTS ${FUSE_ROOT}/include /usr/local/include/fuse3/
+)
 
-
-if (APPLE)
-  set(HINT_DIR ${FUSE_ROOT}/lib)
-  find_library(FUSE_LIBRARY
-    NAMES libosxfuse.dylib
-    HINTS ${HINT_DIR}
-  )
-else (APPLE)
-  set(HINT_DIR ${FUSE_ROOT}/lib)
-  find_library(FUSE_LIBRARY
-    NAMES libfuse3.so
-    HINTS ${HINT_DIR}
-  )
-endif(APPLE)
+find_library(FUSE_LIBRARY
+  NAMES libfuse3.so
+  HINTS ${FUSE_ROOT}/lib /usr/local/lib/x86_64-linux-gnu/
+)
 
 
 include(FindPackageHandleStandardArgs)
