@@ -1357,7 +1357,7 @@ static int test_rmdir_unlink(void) {
         ERROR("should be removed: %s", testdir2);
         return -1;
     }
-
+    
     // pass all tests
     success();
     return 0;
@@ -1456,12 +1456,11 @@ int main(int argc, char *argv[])
     err += test_read_seek();
     err += test_write();
     err += test_mkdir_add();
-    err += test_rmdir_unlink();
     err += test_readdir();
+    err += test_rmdir_unlink();
 
     unlink(testfile);
     unlink(testfile2);
-    unlink(testsock);
     rmdir(testdir);
     rmdir(testdir2);
 
