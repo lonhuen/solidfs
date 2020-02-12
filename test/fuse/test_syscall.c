@@ -928,7 +928,7 @@ static int test_mkdir_add(void) {
     strcat(dirpath, testdir2);
     strcat(dirpath, "/testdir");
 
-    start_test("mkdir")
+    start_test("mkdir additional")
  
     // make 1 sub dir
     rmdir(testdir);
