@@ -1,4 +1,4 @@
-#define FUSE_USE_VERSION 35
+#define FUSE_USE_VERSION 39
 #include <errno.h>
 #include <fcntl.h>
 #include <fuse.h>
@@ -264,6 +264,12 @@ extern "C" {
         });
     }
 
+    int s_create(const char* path, mode_t mode, struct fuse_file_info* fi) {
+        LOG(INFO) << "#create " << path;
+        s_mknod(path,mode,0);
+        return s_open(path,fi);
+    }
+
 }
   
 int main(int argc, char *argv[]) {
@@ -277,7 +283,7 @@ int main(int argc, char *argv[]) {
     fuse_operations s_oper;
     memset(&s_oper, 0, sizeof(s_oper));
 
-    // s_oper.init = s_init;
+    s_oper.init = s_init;
     s_oper.getattr = s_getattr;
     s_oper.open = s_open;
     s_oper.read = s_read;
@@ -289,6 +295,7 @@ int main(int argc, char *argv[]) {
     s_oper.mkdir = s_mkdir;
     s_oper.mknod = s_mknod;
     s_oper.rmdir = s_rmdir;
+    s_oper.create= s_create;
 
     // call s_init here?
     int argcount = 0;
