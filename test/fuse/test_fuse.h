@@ -1,0 +1,1 @@
+int test_read_seek(void);

@@ -283,7 +283,7 @@ int main(int argc, char *argv[]) {
     fuse_operations s_oper;
     memset(&s_oper, 0, sizeof(s_oper));
 
-    s_oper.init = s_init;
+    //s_oper.init = s_init;
     s_oper.getattr = s_getattr;
     s_oper.open = s_open;
     s_oper.read = s_read;
