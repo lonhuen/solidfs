@@ -270,6 +270,72 @@ extern "C" {
         return s_open(path,fi);
     }
 
+    int s_chmod(const char *path, mode_t mode, struct fuse_file_info *fi) {
+        LOG(INFO) << "#chmod " << path;
+
+        return unwrap([&](){
+            INodeID id = fs->path2iid(path);
+            INode inode = fs->im->read_inode(id);
+            
+            inode.ctime = time(NULL);
+            inode.mode = mode;
+            return 0;
+        });       
+    }
+
+    int s_chown(const char *path, uid_t uid, gid_t gid, 
+                struct fuse_file_info *fi) {
+        LOG(INFO) << "#chown " << path;
+
+        return unwrap([&](){
+            INodeID id = fs->path2iid(path);    
+            INode inode = fs->im->read_inode(id);   
+            
+            if (uid != -1) {
+                inode.uid = uid;
+            }
+            if (gid != -1) {
+                inode.gid = gid;
+            }
+
+            inode.ctime = time(NULL);
+            return 0;
+        });
+    }
+
+    /*
+    // TODO: add a statfs function to filesystem ?
+    int s_statfs(const char *path, struct statvfs *stbuf) {
+        LOG(INFO) << "#statfs " << path;
+
+        return unwrap([&](){
+            stbuf->f_bsize
+            stbuf->f_frsize
+            stbuf->f_fsid
+            stbuf->f_flag
+            stbuf->f_flag
+            stbuf->f_namemax
+            
+            return 0; 
+       })
+    }
+    */
+
+    int s_rename(const char *from, const char *to, unsigned int flag) {
+        LOG(INFO) << "#rename " << from << " " << to;
+    
+        return unwrap([&](){
+            std::string to_path(to);
+            std::string to_dir = fs->directory_name(to_path);
+            std::string to_file = fs->file_name(to_path)'
+
+            INodeID id = fs->path2iid(from);
+            INode inode = fs->im->read_inode(id);            
+
+            return 0           
+        });
+    }
+    
 }
   
 int main(int argc, char *argv[]) {
@@ -296,7 +362,11 @@ int main(int argc, char *argv[]) {
     s_oper.mknod = s_mknod;
     s_oper.rmdir = s_rmdir;
     s_oper.create= s_create;
-
+    s_oper.chmod = s_chmod;
+    s_oper.chown = s_chown;
+    // s_oper.statfs = s_statfs;
+    s_oper.rename = s_rename;
+ 
     // call s_init here?
     int argcount = 0;
     char *argument[12];
