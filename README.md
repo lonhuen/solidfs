@@ -15,10 +15,12 @@
     * gcc, g++, make, autoconf, automake, libtool, meso(required)
       * Install
         ``` shell
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
         sudo apt-get update
         sudo apt-get install gcc
         sudo apt-get install g++
-        sudo apt-get install cmake
+        wget https://github.com/Kitware/CMake/releases/download/v3.16.4/cmake-3.16.4-Linux-x86_64.sh
+        sudo bash cmake-3.16.4-Linux-x86_64.sh
         sudo apt-get install autoconf automake libtool
         sudo apt-get install python3 python3-pip python3-setuptools python3-wheel
         sudo apt-get install ninja-build
@@ -27,7 +29,7 @@
       * Add meson to the `PATH`
         ``` shell
         # Add meson to PATH
-        export PATH=$PATH:~/.local/bin/
+        export PATH=$PATH:~/.local/bin/:~/cmake-3.16.4-Linux-x86_64/bin
         ```
       * If there is something wrong with `source.list`, consider replacing the `source.list`
       
