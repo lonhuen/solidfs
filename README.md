@@ -18,7 +18,7 @@
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
         sudo apt-get update
         sudo apt-get install gcc
-        sudo apt-get install g++
+        sudo apt-get install g++-5
         wget https://github.com/Kitware/CMake/releases/download/v3.16.4/cmake-3.16.4-Linux-x86_64.sh
         sudo bash cmake-3.16.4-Linux-x86_64.sh
         sudo apt-get install autoconf automake libtool
