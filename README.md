@@ -48,7 +48,7 @@
       sudo make install
       ```
 
-    * Google Test (optional)
+    * Google Test (optional, skip this if you don't want to do unit tests)
       In order to skip unit test, comment out this line `CMakeLists.txt`
       ``` cmake
       set(ENABLE_TEST true)
