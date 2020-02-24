@@ -410,7 +410,46 @@ int main(int argc, char *argv[]) {
 
     is_root = (geteuid() == 0);
     
+    #ifndef __FreeBSD__ 
+    err += test_mknod();
+#endif
+    err += test_mkdir();
+       
+    err += test_truncate(0);
+    err += test_truncate(testdatalen / 2);
+    err += test_truncate(testdatalen);
+    err += test_truncate(testdatalen + 100);
+
+    err += test_open(0, O_RDONLY, 0);
+    err += test_open(1, O_RDONLY, 0);
+    err += test_open(1, O_RDWR, 0);
+    err += test_open(1, O_WRONLY, 0);
+    err += test_open(0, O_RDWR | O_CREAT, 0600);
+    err += test_open(1, O_RDWR | O_CREAT, 0600);
+    err += test_open(0, O_RDWR | O_CREAT | O_TRUNC, 0600);
+    err += test_open(1, O_RDWR | O_CREAT | O_TRUNC, 0600);
+    err += test_open(0, O_RDONLY | O_CREAT, 0600);
+    err += test_open(0, O_RDONLY | O_CREAT, 0400);
+    err += test_open(0, O_RDONLY | O_CREAT, 0200);
+    err += test_open(0, O_RDONLY | O_CREAT, 0000);
+    err += test_open(0, O_WRONLY | O_CREAT, 0600);
+    err += test_open(0, O_WRONLY | O_CREAT, 0400);
+    err += test_open(0, O_WRONLY | O_CREAT, 0200);
+    err += test_open(0, O_WRONLY | O_CREAT, 0000);
+    err += test_open(0, O_RDWR | O_CREAT, 0400);
+    err += test_open(0, O_RDWR | O_CREAT, 0200);
+    err += test_open(0, O_RDWR | O_CREAT, 0000);
+    err += test_open(0, O_RDWR | O_CREAT | O_EXCL, 0600);
+    err += test_open(1, O_RDWR | O_CREAT | O_EXCL, 0600);
+    err += test_open(0, O_RDWR | O_CREAT | O_EXCL, 0000);
+    err += test_open(1, O_RDWR | O_CREAT | O_EXCL, 0000);
+    
     err += test_read_seek();
+    err += test_write();
+    err += test_mkdir_add();
+    err += test_readdir();
+    err += test_rmdir_unlink();
+    err += test_unlink();
 
     unlink(testfile);
     unlink(testfile2);
