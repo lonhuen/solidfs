@@ -1,4 +1,5 @@
 #pragma once
+#define FUSE_USE_VERSION 39
 
 #include <stdint.h>
 #include <system_error>

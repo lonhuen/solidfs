@@ -37,9 +37,11 @@ inline int unwrap(std::function<int(void)> f) {
 // TODO(lonhh) maybe we need to optimize the functions by using fuse_fiel_info
 extern "C" {
 
-    //void*s_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
-    //    return NULL;
-    //}
+    void*s_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
+        LOG(INFO) << "#init";
+        fs = new FileSystem(10 + 512 + 512 * 512, 9);
+        fs->mkfs();
+    }
     
     int s_getattr(const char* path, struct stat* st, struct fuse_file_info *fi) {
         LOG(INFO) << "#getattr " << path;
@@ -202,7 +204,7 @@ extern "C" {
             INodeID f_id = fs->new_inode(f_name,dir_inode);
 
             // update inode metadata
-            INode inode = INode::get_inode(f_id,INodeType::REGULAR);
+            INode inode = INode::get_inode(f_id,INodeType::REGULAR,mode);
             inode.mode = mode;
             // TODO(lonhh)
             //inode.dev
@@ -239,7 +241,7 @@ extern "C" {
             // allocate a new inode for this dir 
             INodeID f_id = fs->new_inode(f_name,dir_inode);
             // update inode metadata
-            INode inode = INode::get_inode(f_id,INodeType::DIRECTORY);
+            INode inode = INode::get_inode(f_id,INodeType::DIRECTORY,mode);
             inode.mode = mode;
             fs->im->write_inode(f_id,inode);
             //update directory
@@ -319,7 +321,6 @@ extern "C" {
             return 0; 
        })
     }
-    */
 
     int s_rename(const char *from, const char *to, unsigned int flag) {
         LOG(INFO) << "#rename " << from << " " << to;
@@ -327,7 +328,7 @@ extern "C" {
         return unwrap([&](){
             std::string to_path(to);
             std::string to_dir = fs->directory_name(to_path);
-            std::string to_file = fs->file_name(to_path)'
+            std::string to_file = fs->file_name(to_path)
 
             INodeID id = fs->path2iid(from);
             INode inode = fs->im->read_inode(id);            
@@ -335,6 +336,7 @@ extern "C" {
             return 0           
         });
     }
+    */
     
 }
   
@@ -343,13 +345,13 @@ int main(int argc, char *argv[]) {
 
     LogUtils::log_level = "0";
     LogUtils::init(argv[0]);
-    fs = new FileSystem(10 + 512 + 512 * 512, 9);
-    fs->mkfs();
+    //fs = new FileSystem(10 + 512 + 512 * 512, 9);
+    //fs->mkfs();
 
     fuse_operations s_oper;
     memset(&s_oper, 0, sizeof(s_oper));
 
-    //s_oper.init = s_init;
+    s_oper.init = s_init;
     s_oper.getattr = s_getattr;
     s_oper.open = s_open;
     s_oper.read = s_read;
@@ -365,7 +367,7 @@ int main(int argc, char *argv[]) {
     s_oper.chmod = s_chmod;
     s_oper.chown = s_chown;
     // s_oper.statfs = s_statfs;
-    s_oper.rename = s_rename;
+    //s_oper.rename = s_rename;
  
     // call s_init here?
     int argcount = 0;

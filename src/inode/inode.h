@@ -1,6 +1,7 @@
 #pragma once
 #include "common.h"
 #include <utility>
+#include <fuse.h>
 
 namespace solid {
   enum INodeType {
@@ -24,28 +25,31 @@ namespace solid {
         enum INodeType itype;
       };
     };
-    static INode get_inode(INodeID inode_number,enum INodeType itype) {
+    //TODO(lonhh): whether mode_t matches uint16_t?
+    static INode get_inode(INodeID inode_number,enum INodeType itype,mode_t mode) {
+      fuse_context* context = fuse_get_context(); 
       INode inode;
       inode.inode_number = inode_number;
       inode.itype = itype;
       inode.block = 0;
       inode.size = 0;
       inode.links = 1;
-      inode.uid = 0;
-      inode.gid = 0;
-      inode.mode = 0;
+      inode.uid = context->uid;
+      inode.gid = context->gid;
+      inode.mode = mode & (~context->umask);
       return inode;
     }
     
-    static void init_inode(INode& inode,INodeID inode_number,enum INodeType itype) {
+    static void init_inode(INode& inode,INodeID inode_number,enum INodeType itype,mode_t mode) {
+      fuse_context* context = fuse_get_context(); 
       inode.inode_number = inode_number;
       inode.itype = itype;
       inode.block = 0;
       inode.size = 0;
       inode.links = 1;
-      inode.uid = 0;
-      inode.gid = 0;
-      inode.mode = 0;
+      inode.uid = context->uid;
+      inode.gid = context->gid;
+      inode.mode = mode & (~context->umask);
     }
   };
 

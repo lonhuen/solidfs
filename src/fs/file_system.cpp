@@ -27,6 +27,7 @@ namespace solid {
         sb.nr_dblock = nr_blocks - 1 - nr_iblock_blocks;
 
         storage->write_block(0,sb.data);
+
     }
 
     void FileSystem::mkfs() {
@@ -35,7 +36,7 @@ namespace solid {
         bm->mkfs();
 
         // init inode for the root
-        INode inode = INode::get_inode(0,INodeType::DIRECTORY);
+        INode inode = INode::get_inode(0,INodeType::DIRECTORY,0777);
         BlockID b = bm->allocate_dblock();
         inode.p_block[0] = b;
         inode.block++;
