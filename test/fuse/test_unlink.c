@@ -26,7 +26,7 @@ int test_unlink(void) {
         return -1;
     }
 
-    res = check_nonexist(testfile)'
+    res = check_nonexist(testfile);
     if (res == -1) {
         ERROR("file should not exist: %s\n", testfile);
         return -1;

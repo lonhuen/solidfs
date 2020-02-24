@@ -14,6 +14,7 @@
 
 #include "fs/file_system.h"
 #include "inode/inode.h"
+#include "block/super_block.h"
 #include "directory/directory.h"
 #include "utils/fs_exception.h"
 #include "utils/string_utils.h"
@@ -312,19 +313,19 @@ extern "C" {
             Block bl = fs->bm->read_dblock(0);
             super_block* fs_sb = (super_block*)&bl;
 
-            stbuf->f_bsize = config::block_size;
-            stbuf->f_frsize = config::block_size;
-            stbuf->f_blocks = fs_sb->nr_dblock;
-            stbuf->f_files = fs_sb->nr_iblock;
-            stbuf->f_fsid = fs_sb->magic_number;
-            stbuf->f_flag = 0;
-            stbuf->f_namemax = 1024;
+            stbuf->f_bsize = config::block_size;   // file system block size
+            stbuf->f_frsize = config::block_size;  // fragment size
+            stbuf->f_blocks = fs_sb->nr_dblock;    // size of fs in f_frsize units
+            stbuf->f_files = fs_sb->nr_iblock;     // # inodes
+            stbuf->f_fsid = fs_sb->magic_number;   // file system ID
+            stbuf->f_flag = 0;                     // mount flags
+            stbuf->f_namemax = 1024;               // maximum filename length
             
             return 0; 
        });
     }
 
-    /*    
+    /*   
     int s_rename(const char *from, const char *to, unsigned int flag) {
         LOG(INFO) << "#rename " << from << " to " << to;
     
@@ -339,8 +340,6 @@ extern "C" {
         });
     }
     */
-    
-    
 }
   
 int main(int argc, char *argv[]) {
