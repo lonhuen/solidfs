@@ -305,38 +305,41 @@ extern "C" {
         });
     }
 
-    /*
-    // TODO: add a statfs function to filesystem ?
     int s_statfs(const char *path, struct statvfs *stbuf) {
         LOG(INFO) << "#statfs " << path;
 
         return unwrap([&](){
-            stbuf->f_bsize
-            stbuf->f_frsize
-            stbuf->f_fsid
-            stbuf->f_flag
-            stbuf->f_flag
-            stbuf->f_namemax
+            Block bl = fs->bm->read_dblock(0);
+            super_block* fs_sb = (super_block*)&bl;
+
+            stbuf->f_bsize = config::block_size;
+            stbuf->f_frsize = config::block_size;
+            stbuf->f_blocks = fs_sb->nr_dblock;
+            stbuf->f_files = fs_sb->nr_iblock;
+            stbuf->f_fsid = fs_sb->magic_number;
+            stbuf->f_flag = 0;
+            stbuf->f_namemax = 1024;
             
             return 0; 
-       })
+       });
     }
 
+    /*    
     int s_rename(const char *from, const char *to, unsigned int flag) {
-        LOG(INFO) << "#rename " << from << " " << to;
+        LOG(INFO) << "#rename " << from << " to " << to;
     
         return unwrap([&](){
             std::string to_path(to);
             std::string to_dir = fs->directory_name(to_path);
-            std::string to_file = fs->file_name(to_path)
-
+            std::string to_file = fs->file_name(to_path);
             INodeID id = fs->path2iid(from);
             INode inode = fs->im->read_inode(id);            
-
-            return 0           
+                   
+            return 0;           
         });
     }
     */
+    
     
 }
   
