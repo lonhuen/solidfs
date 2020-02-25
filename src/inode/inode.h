@@ -5,7 +5,7 @@
 
 namespace solid {
   enum INodeType {
-    FREE,DIRECTORY,REGULAR
+    FREE,DIRECTORY,REGULAR,SYMLINK
   };
   struct INode{
     union {

@@ -2,6 +2,7 @@
 #define FUSE_USE_VERSION 39
 
 #include <stdint.h>
+#include <limits>
 #include <system_error>
 
 namespace solid {
@@ -24,5 +25,6 @@ namespace solid {
         inline static uint64_t rest_file_handler(uint64_t x) {
             return (BlockID)(x);
         }
+        const static uint64_t null_file_handler = std::numeric_limits<uint64_t>::max();
     };
 };

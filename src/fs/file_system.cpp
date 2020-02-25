@@ -612,9 +612,15 @@ namespace solid {
         if(inode.itype != INodeType::DIRECTORY) {
             throw fs_exception(std::errc::not_a_directory,"@new_inode ",file_name,inode.inode_number);
         }
-        auto n_inode = im->allocate_inode();
-
         Directory dr = read_directory(inode);
+
+        // although we will judge this in insert_entry
+        // we should do it before allocating a new inode
+        if(dr.contain_entry(file_name)) {
+            throw fs_exception(std::errc::file_exists,"@new_inode ",file_name,inode.inode_number);
+        }
+        
+        auto n_inode = im->allocate_inode();
         dr.insert_entry(file_name,n_inode);
         write_directory(inode,dr);
 

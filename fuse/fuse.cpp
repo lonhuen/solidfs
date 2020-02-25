@@ -63,12 +63,12 @@ extern "C" {
                 st->st_blksize = config::block_size;
                 // ingore this
                 //fi->st_dev     = inode.dev;
-                if (inode.itype != INodeType::DIRECTORY) {
+                if (inode.itype == INodeType::REGULAR) {
                     st->st_mode = st->st_mode | S_IFREG;
                 } else if (inode.itype == INodeType::DIRECTORY) {
                     st->st_mode = st->st_mode | S_IFDIR;
-                } else {
-                    LOG(ERROR) << "Unkown file type for " << path;
+                } else if(inode.itype == INodeType::SYMLINK){
+                    st->st_mode = st->st_mode | S_IFLNK;
                 }
             }
             return 0;
@@ -176,9 +176,9 @@ extern "C" {
                 //struct stat st;
                 //memset(&st, 0, sizeof(st));
                 //res = filler(buf, entry.first.c_str(), &st, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS);
-                //if(filler(buf, entry.first.c_str(), NULL, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS))
+                //if(filler(buf, entry.first.c_str(), nullptr, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS))
                 //    break;
-                filler(buf, entry.first.c_str(), NULL, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS);
+                filler(buf, entry.first.c_str(), nullptr, 0, fuse_fill_dir_flags::FUSE_FILL_DIR_PLUS);
             }
             return 0;
         });
@@ -242,7 +242,6 @@ extern "C" {
             INodeID f_id = fs->new_inode(f_name,dir_inode);
             // update inode metadata
             INode inode = INode::get_inode(f_id,INodeType::DIRECTORY,mode);
-            inode.mode = mode;
             fs->im->write_inode(f_id,inode);
             //update directory
             Directory dr(f_id,dir_id);
@@ -279,7 +278,7 @@ extern "C" {
             INodeID id = fs->path2iid(path);
             INode inode = fs->im->read_inode(id);
             
-            inode.ctime = time(NULL);
+            inode.ctime = time(nullptr);
             inode.mode = mode;
             return 0;
         });       
@@ -300,10 +299,87 @@ extern "C" {
                 inode.gid = gid;
             }
 
-            inode.ctime = time(NULL);
+            inode.ctime = time(nullptr);
             return 0;
         });
     }
+
+    int s_symlink(const char* src_path, const char* dst_path) {
+        LOG(INFO) << "#symlink " << src_path << " <- " << dst_path;
+
+        return unwrap([&](){
+            std::string p(dst_path);
+            std::string dir_name = fs->directory_name(p);
+            std::string f_name = fs->file_name(p);
+
+            // get dir
+            INodeID dir_id = fs->path2iid(dir_name);
+            INode dir_inode = fs->im->read_inode(dir_id);
+
+            //check dir will be done in new_inode
+            // allocate a new inode for this file
+            INodeID f_id = fs->new_inode(f_name,dir_inode);
+
+            // update inode metadata
+            INode inode = INode::get_inode(f_id,INodeType::SYMLINK,0777);
+            // TODO(lonhh)
+            //inode.dev
+            fs->im->write_inode(f_id,inode);
+            fs->write(f_id,(const uint8_t*)src_path,strlen(src_path) + 1,0);
+            return 0;
+        });
+
+    }
+
+    int s_readlink(const char* path, char* dst, size_t size) {
+        LOG(INFO) << "#readlink " << path << " " << size;
+
+        return unwrap([&](){
+            s_read(path,dst,size,0,nullptr);
+            return 0;
+        });
+    }
+
+    int s_release(const char* path, struct fuse_file_info* fi) {
+        LOG(INFO) << "#release " << path;
+
+        // maybe we can evict all the cached things?
+        if(fi != nullptr) {
+            fi->fh = config::null_file_handler;
+        }
+        return 0;
+    }
+
+    int s_link(const char* src_path, const char* dst_path) {
+        LOG(INFO) << "#link " << src_path << " <- " << dst_path;
+
+        return unwrap([&](){
+            // first get the inode that we are going to make hard link
+            INodeID src_id = fs->path2iid(src_path);
+            INode src_inode = fs->im->read_inode(src_id);
+
+            // here we are sure that the inode exists
+            // then try to insert this enty to the directory
+            std::string p(dst_path);
+            std::string dir_name = fs->directory_name(p);
+            std::string f_name = fs->file_name(p);
+            INodeID dir_id = fs->path2iid(dir_name);
+            Directory dr = fs->read_directory(dir_id);
+            // we'll judge whether it contains in the insert function
+            dr.insert_entry(f_name,src_id);
+            fs->write_directory(dir_id,dr);
+
+            // finally let's update the inode
+            src_inode.ctime = time(nullptr);
+            src_inode.links += 1;
+            fs->im->write_inode(src_id,src_inode);
+            return 0;
+        });
+
+
+    }
+
+
 
     /*
     // TODO: add a statfs function to filesystem ?
@@ -368,6 +444,10 @@ int main(int argc, char *argv[]) {
     s_oper.chown = s_chown;
     // s_oper.statfs = s_statfs;
     //s_oper.rename = s_rename;
+    s_oper.symlink = s_symlink;
+    s_oper.readlink = s_readlink;
+    s_oper.release = s_release;
+    s_oper.link = s_link;
  
     // call s_init here?
     int argcount = 0;
