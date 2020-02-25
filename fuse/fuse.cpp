@@ -282,6 +282,7 @@ extern "C" {
             
             inode.ctime = time(NULL);
             inode.mode = mode;
+            fs->im->write_inode(id, inode);
             return 0;
         });       
     }
@@ -302,6 +303,7 @@ extern "C" {
             }
 
             inode.ctime = time(NULL);
+            fs->im->write_inode(id, inode);
             return 0;
         });
     }
@@ -324,22 +326,60 @@ extern "C" {
             return 0; 
        });
     }
-
-    /*   
+       
     int s_rename(const char *from, const char *to, unsigned int flag) {
         LOG(INFO) << "#rename " << from << " to " << to;
     
         return unwrap([&](){
-            std::string to_path(to);
-            std::string to_dir = fs->directory_name(to_path);
-            std::string to_file = fs->file_name(to_path);
-            INodeID id = fs->path2iid(from);
-            INode inode = fs->im->read_inode(id);            
-                   
-            return 0;           
+            std::string to_dirname = fs->directory_name(to);
+            std::string to_fname = fs->file_name(to);
+ 
+            // inode of from path    
+            INodeID from_id = fs->path2iid(from);
+            INode from_inode = fs->im->read_inode(from_id);            
+
+            INodeID to_dirid = fs->path2iid(to_dirname);
+            Directory to_dir = fs->read_directory(to_dirid);
+            INodeID to_id = to_dir.get_entry(to_fname);
+
+            // check if rename call legal
+            if (to_id != 0) {
+                INode to_inode = fs->im->read_inode(to_id);
+                if (to_inode.itype != from_inode.itype) {  // type of to and from not match
+                    
+                    if (to_inode.itype == INodeType::DIRECTORY) {
+                        throw fs_exception(std::errc::is_a_directory,
+                        "#rename: is directory ",to);
+                    } else {
+                        throw fs_exception(std::errc::not_a_directory,
+                        "#rename: is not directory ",to);
+                    }
+                }
+                if (to_inode.itype == INodeType::DIRECTORY) {  // path type directory
+                    Directory to_dir_child = fs->read_directory(to_id);
+                    if (to_dir_child.entry_m.size() > 2) {  // to path is an non empty directory
+                        throw fs_exception(std::errc::directory_not_empty,
+                        "#rename: not a empty ",to);
+                    }
+                }
+            }
+
+            // associate id with to path name
+            from_inode.links += 1;
+            from_inode.ctime = time(NULL);
+            fs->im->write_inode(from_id, from_inode);
+
+            to_dir.insert_entry(to_fname, from_id);
+            fs->write_directory(to_dirid, to_dir);
+
+            // Unlink all the old paths:
+            if (to_id != 0) {
+                fs->unlink(to_id);
+            }
+            return s_unlink(from);
+                              
         });
     }
-    */
 }
   
 int main(int argc, char *argv[]) {
@@ -368,8 +408,8 @@ int main(int argc, char *argv[]) {
     s_oper.create= s_create;
     s_oper.chmod = s_chmod;
     s_oper.chown = s_chown;
-    // s_oper.statfs = s_statfs;
-    //s_oper.rename = s_rename;
+    s_oper.statfs = s_statfs;
+    s_oper.rename = s_rename;
  
     // call s_init here?
     int argcount = 0;
