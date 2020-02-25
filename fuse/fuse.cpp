@@ -50,6 +50,8 @@ extern "C" {
             INodeID id = fs->path2iid(path);
             INode inode = fs->im->read_inode(id);
             if (st != nullptr) {
+                // https://libfuse.github.io/doxygen/structfuse__operations.html
+                // The 'st_ino' field is ignored except if the 'use_ino' mount option is given. 
                 st->st_ino     = id;
                 st->st_mode    = inode.mode;
                 st->st_nlink   = inode.links;
