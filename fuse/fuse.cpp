@@ -14,6 +14,7 @@
 
 #include "fs/file_system.h"
 #include "inode/inode.h"
+#include "block/super_block.h"
 #include "directory/directory.h"
 #include "utils/fs_exception.h"
 #include "utils/string_utils.h"
@@ -140,7 +141,7 @@ extern "C" {
     int s_unlink(const char *path) {
         LOG(INFO) << "#unlink " << path;
 
-        return unwrap([&](){
+        //return unwrap([&](){
             std::string p(path);
             std::string dir_name = fs->directory_name(p);
             std::string f_name = fs->file_name(p);
@@ -156,7 +157,7 @@ extern "C" {
 
             fs->unlink(f_id);
             return 0;
-        });
+        //});
     }
     
     int s_readdir(const char * path, void *buf, fuse_fill_dir_t filler,
@@ -222,8 +223,14 @@ extern "C" {
         return unwrap([&](){
             INodeID id = fs->path2iid(path);
             INode inode = fs->im->read_inode(id);
-            inode.atime = ts[0].tv_nsec;
-            inode.ctime = ts[1].tv_nsec;
+            inode.ctime = time(nullptr);
+            if(ts == nullptr) {
+                inode.atime = inode.ctime;
+                inode.mtime = inode.ctime;
+            } else {
+                inode.atime = ts[0].tv_sec;
+                inode.mtime = ts[1].tv_sec;
+            }
             fs->im->write_inode(id,inode);
             return 0;
         });
@@ -282,6 +289,7 @@ extern "C" {
             
             inode.ctime = time(nullptr);
             inode.mode = mode;
+            fs->im->write_inode(id, inode);
             return 0;
         });       
     }
@@ -302,6 +310,7 @@ extern "C" {
             }
 
             inode.ctime = time(nullptr);
+            fs->im->write_inode(id, inode);
             return 0;
         });
     }
@@ -383,39 +392,79 @@ extern "C" {
 
 
 
-    /*
     // TODO: add a statfs function to filesystem ?
     int s_statfs(const char *path, struct statvfs *stbuf) {
         LOG(INFO) << "#statfs " << path;
 
         return unwrap([&](){
-            stbuf->f_bsize
-            stbuf->f_frsize
-            stbuf->f_fsid
-            stbuf->f_flag
-            stbuf->f_flag
-            stbuf->f_namemax
+            Block bl = fs->bm->read_dblock(0);
+            super_block* fs_sb = (super_block*)&bl;
+
+            stbuf->f_bsize = config::block_size;   // file system block size
+            stbuf->f_frsize = config::block_size;  // fragment size
+            stbuf->f_blocks = fs_sb->nr_dblock;    // size of fs in f_frsize units
+            stbuf->f_files = fs_sb->nr_iblock;     // # inodes
+            stbuf->f_fsid = fs_sb->magic_number;   // file system ID
+            stbuf->f_flag = 0;                     // mount flags
+            stbuf->f_namemax = 1024;               // maximum filename length
             
             return 0; 
-       })
+       });
     }
-
+       
     int s_rename(const char *from, const char *to, unsigned int flag) {
-        LOG(INFO) << "#rename " << from << " " << to;
+        LOG(INFO) << "#rename " << from << " to " << to;
     
         return unwrap([&](){
-            std::string to_path(to);
-            std::string to_dir = fs->directory_name(to_path);
-            std::string to_file = fs->file_name(to_path)
+            std::string to_dirname = fs->directory_name(to);
+            std::string to_fname = fs->file_name(to);
+ 
+            // inode of from path    
+            INodeID from_id = fs->path2iid(from);
+            INode from_inode = fs->im->read_inode(from_id);            
 
-            INodeID id = fs->path2iid(from);
-            INode inode = fs->im->read_inode(id);            
+            INodeID to_dirid = fs->path2iid(to_dirname);
+            Directory to_dir = fs->read_directory(to_dirid);
 
-            return 0           
+            // check if rename call legal
+            if (to_dir.contain_entry(to_fname)) {
+                INodeID to_id = to_dir.get_entry(to_fname);
+                INode to_inode = fs->im->read_inode(to_id);
+                if (to_inode.itype != from_inode.itype) {  // type of to and from not match
+                    if (to_inode.itype == INodeType::DIRECTORY) {
+                        throw fs_exception(std::errc::is_a_directory,
+                        "#rename: is directory ",to);
+                    } else {
+                        throw fs_exception(std::errc::not_a_directory,
+                        "#rename: is not directory ",to);
+                    }
+                }
+                if (to_inode.itype == INodeType::DIRECTORY) {  // path type directory
+                    Directory to_dir_child = fs->read_directory(to_id);
+                    if (to_dir_child.entry_m.size() > 2) {  // to path is an non empty directory
+                        throw fs_exception(std::errc::directory_not_empty,
+                        "#rename: not a empty ",to);
+                    }
+                }
+            }
+
+            // associate id with to path name
+            from_inode.links += 1;
+            from_inode.ctime = time(NULL);
+            fs->im->write_inode(from_id, from_inode);
+
+            to_dir.insert_entry(to_fname, from_id);
+            fs->write_directory(to_dirid, to_dir);
+
+            // Unlink all the old paths:
+            if (to_dir.contain_entry(to_fname)) {
+                INodeID to_id = to_dir.get_entry(to_fname);
+                fs->unlink(to_id);
+            }
+            return s_unlink(from);
+                              
         });
     }
-    */
-    
 }
   
 int main(int argc, char *argv[]) {
@@ -444,8 +493,8 @@ int main(int argc, char *argv[]) {
     s_oper.create= s_create;
     s_oper.chmod = s_chmod;
     s_oper.chown = s_chown;
-    // s_oper.statfs = s_statfs;
-    //s_oper.rename = s_rename;
+    s_oper.statfs = s_statfs;
+    s_oper.rename = s_rename;
     s_oper.symlink = s_symlink;
     s_oper.readlink = s_readlink;
     s_oper.release = s_release;
