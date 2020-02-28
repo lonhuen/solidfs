@@ -1,4 +1,3 @@
-#define test_open(exist, flags, mode)  do_test_open(exist, flags, #flags, mode)
 int test_mknod(void);
 int test_mkdir(void);
 int test_truncate(int len);
