@@ -141,7 +141,7 @@ extern "C" {
     int s_unlink(const char *path) {
         LOG(INFO) << "#unlink " << path;
 
-        //return unwrap([&](){
+        return unwrap([&](){
             std::string p(path);
             std::string dir_name = fs->directory_name(p);
             std::string f_name = fs->file_name(p);
@@ -157,7 +157,7 @@ extern "C" {
 
             fs->unlink(f_id);
             return 0;
-        //});
+        });
     }
     
     int s_readdir(const char * path, void *buf, fuse_fill_dir_t filler,
@@ -446,23 +446,21 @@ extern "C" {
                         "#rename: not a empty ",to);
                     }
                 }
+
+                // delete the replaced files
+                fs->unlink(to_id);
             }
 
             // associate id with to path name
             from_inode.links += 1;
             from_inode.ctime = time(NULL);
             fs->im->write_inode(from_id, from_inode);
-
-            to_dir.insert_entry(to_fname, from_id);
+            //to_dir.insert_entry(to_fname, from_id);
+            //TODO(lonhh) we might need an update semantic here
+            to_dir.entry_m[to_fname] = from_id;
             fs->write_directory(to_dirid, to_dir);
 
-            // Unlink all the old paths:
-            if (to_dir.contain_entry(to_fname)) {
-                INodeID to_id = to_dir.get_entry(to_fname);
-                fs->unlink(to_id);
-            }
             return s_unlink(from);
-                              
         });
     }
 }
