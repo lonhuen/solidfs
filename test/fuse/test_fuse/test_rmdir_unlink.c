@@ -52,7 +52,7 @@ int test_rmdir_unlink(void) {
     }
       
     // remove non empty dir with file
-    res = mkdir(testdir, 775);
+    res = mkdir(testdir, 0775);
     if (res == -1) {
         PERROR("mkdir");
         return -1;
@@ -122,12 +122,12 @@ int test_rmdir_unlink(void) {
         ERROR("%s already exists", testdir2);
         return -1;
     }
-    res = mkdir(testdir2, 775);
+    res = mkdir(testdir2, 0775);
     if (res != 0) {
         ERROR("failed to create dir %s", testdir2);
         return -1;
     }
-    res =mkdir(dirpath, 775);
+    res =mkdir(dirpath, 0775);
     if (res != 0) {
         ERROR("failed to create dir %s", dirpath);
         return -1;

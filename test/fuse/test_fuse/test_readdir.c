@@ -33,6 +33,7 @@ int test_readdir(void) {
     strcpy(filepath2, dirpath2);
     strcat(filepath2, "/testfile2");
 
+    start_test("readdir")   
     // create dir and file
     unlink(filepath1);
     unlink(filepath2);
@@ -65,7 +66,7 @@ int test_readdir(void) {
         return -1;
     }
 
-    res = mkdir(parentdir, 775) + mkdir(dirpath1, 775) + mkdir(dirpath2, 775)
+    res = mkdir(parentdir, 0775) + mkdir(dirpath1, 0775) + mkdir(dirpath2, 0775)
         + create_file(filepath1, data1, datalen1) 
         + create_file(filepath2, data2, datalen2);
     if (res != 0) {
