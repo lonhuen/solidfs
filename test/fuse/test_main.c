@@ -61,6 +61,7 @@ int main(int argc, char *argv[]) {
     err += test_readdir();
     err += test_rmdir_unlink();
     err += test_unlink();
+    err += test_chmod();
 
     unlink(testfile);
     unlink(testfile2);

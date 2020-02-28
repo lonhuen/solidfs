@@ -7,3 +7,5 @@ int test_mkdir_add(void);
 int test_readdir(void);
 int test_rmdir_unlink(void);
 int test_unlink(void);
+int test_chmod(void);
+
