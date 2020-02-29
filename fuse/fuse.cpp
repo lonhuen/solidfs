@@ -134,6 +134,9 @@ extern "C" {
             }
             INodeID id = (fi == nullptr) ? fs->path2iid(path) : config::rest_file_handler(fi->fh);
             fs->truncate(id, (uint32_t) offset);
+            INode inode = fs->im->read_inode(id);
+            inode.ctime = time(nullptr);
+            fs->im->write_inode(id,inode);
             return 0;
         });
     }
@@ -397,7 +400,8 @@ extern "C" {
         LOG(INFO) << "#statfs " << path;
 
         return unwrap([&](){
-            Block bl = fs->bm->read_dblock(0);
+            Block bl;
+            fs->storage->read_block(0,bl.data);
             super_block* fs_sb = (super_block*)&bl;
 
             stbuf->f_bsize = config::block_size;   // file system block size

@@ -27,7 +27,11 @@ namespace solid {
         sb.nr_dblock = nr_blocks - 1 - nr_iblock_blocks;
 
         storage->write_block(0,sb.data);
-
+        
+        maximum_file_size = config::data_ptr_cnt - 3;
+        const uint64_t factor = config::block_size/sizeof(BlockID);
+        maximum_file_size += factor + factor * factor + factor * factor * factor;
+        maximum_file_size *= config::block_size;
     }
 
     void FileSystem::mkfs() {
@@ -132,10 +136,13 @@ namespace solid {
         // TODO(lonhh) whether we can batch the allocating??
         INode inode = im->read_inode(id);
         std::vector<BlockID> allocated_blocks;
+        if(offset + size > maximum_file_size)
+            throw fs_exception(std::errc::file_too_large,
+                "@write ",id," file too large");
         if(offset + size > inode.block * config::block_size) {
             // the last block index [)
-            uint32_t nr_allocate_blocks = (config::mod_block_size(offset+size) == 0) ? config::idiv_block_size(offset+size) : config::idiv_block_size(offset+size) + 1;
-            nr_allocate_blocks = nr_allocate_blocks - inode.block;
+            uint32_t nr_allocate_blocks = ((config::mod_block_size(offset+size) == 0) ?
+                     config::idiv_block_size(offset+size) : config::idiv_block_size(offset+size) + 1) - inode.block;
             allocated_blocks.reserve(nr_allocate_blocks);
             for(auto i=0;i<nr_allocate_blocks;i++){
                 try {
@@ -632,6 +639,10 @@ namespace solid {
     // * truncate should also examine the blocks rather than only the size
     void FileSystem::truncate(INodeID id, uint32_t size) {
         INode inode = im->read_inode(id);
+        
+        if(size > maximum_file_size)
+            throw fs_exception(std::errc::file_too_large,
+                "@write ",id," file too large");
 
         // extend
         if(size > inode.size) {
@@ -639,11 +650,15 @@ namespace solid {
             std::memset(buffer,0,size-inode.size);
             auto ret = write(id,buffer,size-inode.size,inode.size);
             delete []buffer;
+            inode = im->read_inode(id);
         }
         uint32_t e_index  = inode.block;
         //uint32_t s_index  = (config::mod_block_size(inode.size) == 0) ? config::idiv_block_size(inode.size) : config::idiv_block_size(inode.size) + 1;
         uint32_t s_index  = (config::mod_block_size(size) == 0) ? config::idiv_block_size(size) : config::idiv_block_size(size) + 1;
         uint32_t nr_free_blocks = e_index - s_index;
+
+        LOG(INFO) << "@truncate nr_free_blocks " << nr_free_blocks << " "
+            << e_index  << " - " << s_index;
         
         for(auto i=0;i<nr_free_blocks;i++) {
             delete_dblock(inode);

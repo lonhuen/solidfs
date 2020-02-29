@@ -17,6 +17,7 @@ namespace solid {
         INodeManager* im;
         BlockManager* bm;
         Storage* storage;
+        uint64_t maximum_file_size;
 
     public:
         // just used for DEBUG
