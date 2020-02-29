@@ -657,9 +657,6 @@ namespace solid {
         uint32_t s_index  = (config::mod_block_size(size) == 0) ? config::idiv_block_size(size) : config::idiv_block_size(size) + 1;
         uint32_t nr_free_blocks = e_index - s_index;
 
-        LOG(INFO) << "@truncate nr_free_blocks " << nr_free_blocks << " "
-            << e_index  << " - " << s_index;
-        
         for(auto i=0;i<nr_free_blocks;i++) {
             delete_dblock(inode);
         }

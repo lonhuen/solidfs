@@ -192,11 +192,9 @@ extern "C" {
 
     int s_mknod(const char *path, mode_t mode, dev_t dev) {
         LOG(INFO) << "#mknod " << path;
+        
+        // TODO(lonhh): check this! make sure that the error is correct
         return unwrap([&](){
-            // TODO(lonhh): check this! make sure that the error is correct
-            //if (!S_INSREG(mode)) {
-            //    return -ENOTSUP;
-            //}
             std::string p(path);
             std::string dir_name = fs->directory_name(p);
             std::string f_name = fs->file_name(p);
@@ -492,7 +490,7 @@ int main(int argc, char *argv[]) {
     s_oper.mkdir = s_mkdir;
     s_oper.mknod = s_mknod;
     s_oper.rmdir = s_rmdir;
-    s_oper.create= s_create;
+    //s_oper.create= s_create;
     s_oper.chmod = s_chmod;
     s_oper.chown = s_chown;
     s_oper.statfs = s_statfs;
