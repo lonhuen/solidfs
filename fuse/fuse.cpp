@@ -309,9 +309,11 @@ extern "C" {
             if (gid != -1) {
                 inode.gid = gid;
             }
-
-            inode.ctime = time(nullptr);
-            fs->im->write_inode(id, inode);
+            
+            if (uid != -1 || gid != -1) {
+                inode.ctime = time(nullptr);
+                fs->im->write_inode(id, inode);
+            }
             return 0;
         });
     }
