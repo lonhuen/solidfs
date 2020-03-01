@@ -303,14 +303,14 @@ extern "C" {
             INodeID id = fs->path2iid(path);    
             INode inode = fs->im->read_inode(id);   
             
-            if (uid != -1) {
+            if (uid != uid_t(-1)) {
                 inode.uid = uid;
             }
-            if (gid != -1) {
+            if (gid != gid_t(-1)) {
                 inode.gid = gid;
             }
             
-            if (uid != -1 || gid != -1) {
+            if (uid != uid_t(-1) || gid != gid_t(-1)) {
                 inode.ctime = time(nullptr);
                 fs->im->write_inode(id, inode);
             }
