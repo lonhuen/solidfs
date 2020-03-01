@@ -40,7 +40,7 @@ extern "C" {
 
     void*s_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
         LOG(INFO) << "#init";
-        fs = new FileSystem(10 + 512 + 512 * 512, 9);
+        // fs = new FileSystem(10 + 512 + 512 * 512, 9);
         fs->mkfs();
     }
     
@@ -466,13 +466,47 @@ extern "C" {
         });
     }
 }
-  
+
+bool is_positive_int(char *arg) {
+    int i = 0;
+    if (arg == nullptr) {
+        return false;
+    }
+
+    for (char *c = arg; *c; c++) {
+        if (isdigit(*c) == false) {
+            return false;
+        }
+    }
+    return true;
+} 
+ 
 int main(int argc, char *argv[]) {
     // TODO: change this later to customize size based on argv
+    // command ./solidFS folder nr_block nr_iblock
+    if (argc != 4) {
+        fprintf(stderr, "Usage: ./filesystem mount_directory nr_block nr_iblock\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (is_positive_int(argv[2]) == false) {
+        fprintf(stderr, "nr_block needs to be a positive integer\n");
+        exit(EXIT_FAILURE);
+    }
+    if (is_positive_int(argv[3]) == false) {
+        fprintf(stderr, "nr_iblock need to be a positive integer\n");
+        exit(EXIT_FAILURE);   
+    }
+
+    int nr_block = 0;
+    std::stringstream(argv[2]) >> nr_block;
+    
+    int nr_iblock = 0;
+    std::stringstream(argv[3]) >> nr_iblock;    
 
     LogUtils::log_level = "0";
     LogUtils::init(argv[0]);
-    //fs = new FileSystem(10 + 512 + 512 * 512, 9);
+    fs = new FileSystem(nr_block, nr_iblock);
     //fs->mkfs();
 
     fuse_operations s_oper;
@@ -511,7 +545,7 @@ int main(int argc, char *argv[]) {
     char p[] = "default_permissions"; // Defer permissions checks to kernel
     char r[] = "allow_other"; // Allow all users to access files
 
-    char mount_point[] = "temp/";
+    char *mount_point = argv[1];
 
     argument[argcount++] = argv[0];
     argument[argcount++] = f;   
