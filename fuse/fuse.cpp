@@ -442,25 +442,28 @@ extern "C" {
             // check if rename call legal
             if (to_dir.contain_entry(to_fname)) {
                 INodeID to_id = to_dir.get_entry(to_fname);
+                if(from_id == to_id)
+                    return 0;
                 INode to_inode = fs->im->read_inode(to_id);
-                if (to_inode.itype != from_inode.itype) {  // type of to and from not match
-                    if (to_inode.itype == INodeType::DIRECTORY) {
+                if (to_inode.itype == INodeType::DIRECTORY) {  // type of to and from not match
+                    if (from_inode.itype != INodeType::DIRECTORY) {
                         throw fs_exception(std::errc::is_a_directory,
                         "#rename: is directory ",to);
-                    } else {
-                        throw fs_exception(std::errc::not_a_directory,
-                        "#rename: is not directory ",to);
                     }
-                }
-                if (to_inode.itype == INodeType::DIRECTORY) {  // path type directory
+                    
                     Directory to_dir_child = fs->read_directory(to_id);
                     if (to_dir_child.entry_m.size() > 2) {  // to path is an non empty directory
                         throw fs_exception(std::errc::directory_not_empty,
                         "#rename: not a empty ",to);
                     }
+                } else {
+                    if (from_inode.itype == INodeType::DIRECTORY) {
+                        throw fs_exception(std::errc::not_a_directory,
+                        "#rename: is not directory ",to);
+                    }
                 }
-
                 // delete the replaced files
+                // TODO(lonhh): we might need to satisfy some guarantee here. Move this to the final step of rename
                 fs->unlink(to_id);
             }
 
