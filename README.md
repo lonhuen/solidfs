@@ -7,6 +7,8 @@
    Instance type: m1.large
 
    Image name: ubuntu-15.10
+   
+   Image ID: emi-67a061da
 
    Architecture: x86_64
 
