@@ -107,7 +107,7 @@ extern "C" {
                 return res;
             }
             INodeID id = (fi == nullptr) ? fs->path2iid(path) : config::rest_file_handler(fi->fh);
-            return fs->read(id, (uint8_t *)buf, (uint32_t)size,(uint32_t)offset);
+            return fs->read(id, (uint8_t *)buf, (uint64_t)size,(uint64_t)offset);
         });
     }
 
@@ -120,7 +120,7 @@ extern "C" {
                 return res;
             INodeID id = (fi == nullptr) ? fs->path2iid(path) : config::rest_file_handler(fi->fh);
             return fs->write(id, (const uint8_t *)buf,
-                            (uint32_t) size, (uint32_t) offset);
+                            (uint64_t) size, (uint64_t) offset);
         });
     }
 
@@ -133,9 +133,9 @@ extern "C" {
                 return res;
             }
             INodeID id = (fi == nullptr) ? fs->path2iid(path) : config::rest_file_handler(fi->fh);
-            fs->truncate(id, (uint32_t) offset);
+            fs->truncate(id, (uint64_t) offset);
             INode inode = fs->im->read_inode(id);
-            inode.ctime = time(nullptr);
+            //inode.ctime = time(nullptr);
             fs->im->write_inode(id,inode);
             return 0;
         });

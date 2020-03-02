@@ -7,7 +7,7 @@ namespace solid {
     Directory::Directory() {}
     Directory::Directory(INodeID id, INodeID parent): entry_m({{".",id},{"..",parent}}),id(id) {
     }
-    Directory::Directory(INodeID id,const uint8_t* byte_stream, uint32_t size): id(id) {
+    Directory::Directory(INodeID id,const uint8_t* byte_stream, uint64_t size): id(id) {
         deserialize(byte_stream,size);
     }
     void Directory::insert_entry(const std::string& s,INodeID id) {
@@ -46,8 +46,8 @@ namespace solid {
      * @brief serialize the directory to bytes
      * @return 0 if not enough space, size of bytes returned otherwise
     */
-    int Directory::serialize(uint8_t* byte_stream, uint32_t size) {
-        uint32_t s = 0;
+    int Directory::serialize(uint8_t* byte_stream, uint64_t size) {
+        uint64_t s = 0;
         for(auto p=entry_m.begin();p!=entry_m.end();p++) {
             if( s + p->first.length() + sizeof(INodeID) + 1 <= size) {
                 memcpy(byte_stream+s,p->first.c_str(),p->first.length() + 1);
@@ -63,10 +63,10 @@ namespace solid {
         return s;
     }
 
-    int Directory::deserialize(const uint8_t* byte_stream, uint32_t size) {
+    int Directory::deserialize(const uint8_t* byte_stream, uint64_t size) {
         // TODO(lonhh): whether we need to clear the entries?
         // entry_m.clear();
-        uint32_t i = 0;
+        uint64_t i = 0;
         while(i < size) {
             if(byte_stream[i] == '\0')
                 return i;

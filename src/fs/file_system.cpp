@@ -52,7 +52,7 @@ namespace solid {
         /*
         std::cout << "mkfs" << std::endl;
         for(auto i=0;i<13;i++) {
-            std::cout << std::hex << (uint32_t)bl.data[i] << " ";
+            std::cout << std::hex << (uint64_t)bl.data[i] << " ";
         }
         std::cout << std::endl;
         */
@@ -97,7 +97,7 @@ namespace solid {
         return ret;
     }
 
-    int FileSystem::read(INodeID id,uint8_t* dst,uint32_t size,uint32_t offset) {
+    int FileSystem::read(INodeID id,uint8_t* dst,uint64_t size,uint64_t offset) {
         INode inode = im->read_inode(id);
 
         // sanity check
@@ -109,16 +109,16 @@ namespace solid {
             size = inode.size - offset;
         }
         // the number of blocks to read
-        uint32_t s_index = config::idiv_block_size(offset);
-        uint32_t e_index = (config::mod_block_size(offset+size) == 0) ? config::idiv_block_size(offset+size) : config::idiv_block_size(offset+size) + 1;
-        uint32_t nr_blocks = e_index - s_index;
+        uint64_t s_index = config::idiv_block_size(offset);
+        uint64_t e_index = (config::mod_block_size(offset+size) == 0) ? config::idiv_block_size(offset+size) : config::idiv_block_size(offset+size) + 1;
+        uint64_t nr_blocks = e_index - s_index;
         std::vector<BlockID> blockid_arrays = read_dblock_index(inode,s_index,e_index);
 
         // the total number of bytes
-        uint32_t s = 0;
+        uint64_t s = 0;
         // read [s_addr,s_addr+nr_bytes) in the block
-        uint32_t s_addr = config::mod_block_size(offset);
-        uint32_t nr_bytes = std::min(config::block_size - s_addr, size - s);
+        uint64_t s_addr = config::mod_block_size(offset);
+        uint64_t nr_bytes = std::min(config::block_size - s_addr, size - s);
         for(auto p=blockid_arrays.begin();p!=blockid_arrays.end();p++) {
             Block bl = bm->read_dblock(*p);
             std::memcpy(dst+s,bl.data+s_addr,nr_bytes);
@@ -131,7 +131,7 @@ namespace solid {
         return s;
     }
 
-    int FileSystem::write(INodeID id,const uint8_t* src,uint32_t size,uint32_t offset) {
+    int FileSystem::write(INodeID id,const uint8_t* src,uint64_t size,uint64_t offset) {
         // first judge whether we need to allocate more blocks
         // TODO(lonhh) whether we can batch the allocating??
         INode inode = im->read_inode(id);
@@ -147,7 +147,7 @@ namespace solid {
 
         if(offset + size > inode.block * config::block_size) {
             // the last block index [)
-            uint32_t nr_allocate_blocks = ((config::mod_block_size(offset+size) == 0) ?
+            uint64_t nr_allocate_blocks = ((config::mod_block_size(offset+size) == 0) ?
                      config::idiv_block_size(offset+size) : config::idiv_block_size(offset+size) + 1) - inode.block;
             allocated_blocks.reserve(nr_allocate_blocks);
             for(auto i=0;i<nr_allocate_blocks;i++){
@@ -182,9 +182,9 @@ namespace solid {
         // just get all the previous allocated blocks (before write function)
 
         // the number of blocks to write
-        uint32_t s_index = config::idiv_block_size(offset);
-        uint32_t e_index = (config::mod_block_size(offset+size) == 0) ? config::idiv_block_size(offset+size) : config::idiv_block_size(offset+size) + 1;
-        uint32_t nr_blocks = e_index - s_index;
+        uint64_t s_index = config::idiv_block_size(offset);
+        uint64_t e_index = (config::mod_block_size(offset+size) == 0) ? config::idiv_block_size(offset+size) : config::idiv_block_size(offset+size) + 1;
+        uint64_t nr_blocks = e_index - s_index;
         
         // don't count the just-allocated blocks
         std::vector<BlockID> blockid_arrays = read_dblock_index(inode,s_index,e_index);
@@ -192,10 +192,10 @@ namespace solid {
         blockid_arrays.insert(blockid_arrays.end(),allocated_blocks.begin(),allocated_blocks.end());
 
         // the total number of bytes
-        uint32_t s = 0;
+        uint64_t s = 0;
         // read [s_addr,s_addr+nr_bytes) in the block
-        uint32_t s_addr = config::mod_block_size(offset);
-        uint32_t nr_bytes = std::min(config::block_size - s_addr, size - s);
+        uint64_t s_addr = config::mod_block_size(offset);
+        uint64_t nr_bytes = std::min(config::block_size - s_addr, size - s);
         for(auto p=blockid_arrays.begin();p!=blockid_arrays.end();p++) {
             Block bl = bm->read_dblock(*p);
             std::memcpy(bl.data+s_addr,src+s,nr_bytes);
@@ -212,7 +212,7 @@ namespace solid {
     }
 
     // read [begin,end) entries
-    std::vector<BlockID> FileSystem::read_dblock_index(INode& inode,uint32_t begin,uint32_t end) {
+    std::vector<BlockID> FileSystem::read_dblock_index(INode& inode,uint64_t begin,uint64_t end) {
         std::vector<BlockID> ret;
         ret.reserve(end - begin);
 
@@ -240,7 +240,7 @@ namespace solid {
     }
 
     // note the "begin" here is in term of the start of the region    
-    uint32_t FileSystem::block_lookup_per_region(INode& inode,uint32_t begin,uint32_t end,std::vector<BlockID>& vec,int depth) {
+    uint64_t FileSystem::block_lookup_per_region(INode& inode,uint64_t begin,uint64_t end,std::vector<BlockID>& vec,int depth) {
         // TODO(lonhh): sanity check
         if(begin >= end) {
             return 0;
@@ -251,7 +251,7 @@ namespace solid {
         // direct look up
         // [begin, end) is subset of [0,10)
         if(depth == 0) {
-            for(uint32_t i=begin; begin < end && i < 10;i++, begin++) {
+            for(uint64_t i=begin; begin < end && i < 10;i++, begin++) {
                 vec.push_back(inode.p_block[i]);
                 ret++;
                 LOG(INFO) << "reading " << i << " @depth=0 " << inode.p_block[i];
@@ -259,7 +259,7 @@ namespace solid {
         // note here [begin, end) in [0,512)
         } else if (depth == 1) {
             Block bl = bm->read_dblock(inode.p_block[10]);
-            for(uint32_t i=begin; begin < end && i< factor ;i++, begin++){
+            for(uint64_t i=begin; begin < end && i< factor ;i++, begin++){
                 vec.push_back(bl.bl_entry[i]);
                 ret++;
                 LOG(INFO) << "reading " << i << " @depth=1";
@@ -268,11 +268,11 @@ namespace solid {
         } else if (depth == 2) {
             Block bl_1 = bm->read_dblock(inode.p_block[11]);
             auto si = begin / factor;
-            for(uint32_t i=si; i < factor && begin < end;i++){
+            for(uint64_t i=si; i < factor && begin < end;i++){
                 Block bl_2 = bm->read_dblock(bl_1.bl_entry[i]);
                 
                 auto sj = begin % factor;
-                for(uint32_t j=sj; j < factor && begin < end;j++, begin++){
+                for(uint64_t j=sj; j < factor && begin < end;j++, begin++){
                     vec.push_back(bl_2.bl_entry[j]);
                     ret++;
                     LOG(INFO) << "reading " << i << " " << j << " @depth=2";
@@ -282,16 +282,16 @@ namespace solid {
         } else {
             Block bl_1 = bm->read_dblock(inode.p_block[12]);
             auto si = begin / factor / factor;
-            for(uint32_t i=si; i < factor && begin < end;i++){
+            for(uint64_t i=si; i < factor && begin < end;i++){
                 Block bl_2 = bm->read_dblock(bl_1.bl_entry[i]);
                 
                 auto sj = (begin / factor ) % factor;
-                for(uint32_t j=sj; j < factor && begin < end;j++){
+                for(uint64_t j=sj; j < factor && begin < end;j++){
                     Block bl_3 = bm->read_dblock(bl_2.bl_entry[j]);
                 
                 
                     auto sk = begin % factor ;
-                    for(uint32_t k=sk; k < factor && begin < end;k++,begin++){
+                    for(uint64_t k=sk; k < factor && begin < end;k++,begin++){
                         vec.push_back(bl_3.bl_entry[k]);
                         ret++;
                         LOG(INFO) << "reading " << i << " " << j << " " << k << " @depth=3";
@@ -308,8 +308,8 @@ namespace solid {
 
         BlockID allocate_block_array[4];
         // 4 types, index-1, index-2, index-3
-        uint32_t index_array[4];
-        uint32_t flag_array[4];
+        uint64_t index_array[4];
+        uint64_t flag_array[4];
 
         // let's first do the translation
         if(inode.block < 10) {
@@ -349,7 +349,7 @@ namespace solid {
         }
 
 
-        uint32_t nr_mblock = 0;
+        uint64_t nr_mblock = 0;
         for(auto i=1;i<=index_array[0];i++) {
             nr_mblock += (flag_array[i] == 0 ? 1 : 0);
         }
@@ -459,8 +459,8 @@ namespace solid {
 
         BlockID free_block_array[4];
         // 4 types, index-1, index-2, index-3
-        uint32_t index_array[4];
-        uint32_t flag_array[4];
+        uint64_t index_array[4];
+        uint64_t flag_array[4];
 
         // let's first do the translation
         if(block_id < 10) {
@@ -498,7 +498,7 @@ namespace solid {
         }
 
         // # of blocks to be freed 
-        uint32_t nr_fblock = 0;
+        uint64_t nr_fblock = 0;
         for(auto i=1;i<=index_array[0];i++) {
             nr_fblock += (flag_array[i] == 0 ? 1 : 0);
         }
@@ -643,7 +643,7 @@ namespace solid {
     }
 
     // * truncate should also examine the blocks rather than only the size
-    void FileSystem::truncate(INodeID id, uint32_t size) {
+    void FileSystem::truncate(INodeID id, uint64_t size) {
         INode inode = im->read_inode(id);
         
         if(size > maximum_file_size)
@@ -661,10 +661,10 @@ namespace solid {
             delete []buffer;
             inode = im->read_inode(id);
         }
-        uint32_t e_index  = inode.block;
-        //uint32_t s_index  = (config::mod_block_size(inode.size) == 0) ? config::idiv_block_size(inode.size) : config::idiv_block_size(inode.size) + 1;
-        uint32_t s_index  = (config::mod_block_size(size) == 0) ? config::idiv_block_size(size) : config::idiv_block_size(size) + 1;
-        uint32_t nr_free_blocks = e_index - s_index;
+        uint64_t e_index  = inode.block;
+        //uint64_t s_index  = (config::mod_block_size(inode.size) == 0) ? config::idiv_block_size(inode.size) : config::idiv_block_size(inode.size) + 1;
+        uint64_t s_index  = (config::mod_block_size(size) == 0) ? config::idiv_block_size(size) : config::idiv_block_size(size) + 1;
+        uint64_t nr_free_blocks = e_index - s_index;
 
         for(auto i=0;i<nr_free_blocks;i++) {
             delete_dblock(inode);

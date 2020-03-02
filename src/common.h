@@ -7,12 +7,12 @@
 
 namespace solid {
     using BlockID = uint64_t;
-    using INodeID = uint32_t;
+    using INodeID = uint64_t;
     class config {
     public:
-        const static uint32_t data_ptr_cnt = 13;
-        const static uint32_t inode_size = 256;
-        const static uint32_t block_size = 4096;
+        const static uint64_t data_ptr_cnt = 13;
+        const static uint64_t inode_size = 256;
+        const static uint64_t block_size = 4096;
         inline static uint64_t idiv_block_size(uint64_t x) {
             return x >> 12;
         }

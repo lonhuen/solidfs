@@ -25,9 +25,9 @@ namespace solid {
         FileSystem(BlockID nr_blocks,BlockID nr_iblock_blocks);
         void mkfs();
 
-        int read(INodeID id,uint8_t* dst,uint32_t size,uint32_t offset);
-        int write(INodeID id,const uint8_t* src,uint32_t size,uint32_t offset);
-        void truncate(INodeID id, uint32_t size);
+        int read(INodeID id,uint8_t* dst,uint64_t size,uint64_t offset);
+        int write(INodeID id,const uint8_t* src,uint64_t size,uint64_t offset);
+        void truncate(INodeID id, uint64_t size);
         void unlink(INodeID id);
 
         INodeID path2iid(const std::string& path);
@@ -49,8 +49,8 @@ namespace solid {
         Directory read_directory(INode& inode);
         void write_directory(INode& inode,Directory& dr);
 
-        std::vector<BlockID> read_dblock_index(INode& inode,uint32_t begin,uint32_t end);
-        uint32_t block_lookup_per_region(INode& inode,uint32_t begin,uint32_t end,std::vector<BlockID>& vec,int depth);
+        std::vector<BlockID> read_dblock_index(INode& inode,uint64_t begin,uint64_t end);
+        uint64_t block_lookup_per_region(INode& inode,uint64_t begin,uint64_t end,std::vector<BlockID>& vec,int depth);
 
         std::string simplifyPath(std::string path);
         std::string directory_name(std::string path);

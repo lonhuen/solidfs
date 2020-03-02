@@ -72,7 +72,7 @@ namespace solid {
                 "@allocate_dblock: run out of data block");
         }
         Block bl = read_dblock(head);
-        uint32_t i=1;
+        uint64_t i=1;
         for(;i<nr_blocks_per_group;i++) {
             if(bl.fl_entry[i] != 0)
                 break;
@@ -109,7 +109,7 @@ namespace solid {
         BlockID head = sblock.h_dblock;
         Block bl;
         p_storage->read_block(head,bl.data); 
-        uint32_t i=1;
+        uint64_t i=1;
         for(;i<nr_blocks_per_group;i++) {
             if(bl.fl_entry[i] == 0)
                 break;

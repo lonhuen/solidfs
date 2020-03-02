@@ -14,14 +14,14 @@ namespace solid {
 
         Directory();
         Directory(INodeID id, INodeID parent);
-        Directory(INodeID id,const uint8_t* byte_stream, uint32_t size);
+        Directory(INodeID id,const uint8_t* byte_stream, uint64_t size);
         void insert_entry(const std::string& s,INodeID id);
         void remove_entry(const std::string& s);
         bool contain_entry(const std::string& s) const;
         INodeID get_entry(const std::string& s) const;
 
-        int serialize(uint8_t* byte_stream, uint32_t size);
-        int deserialize(const uint8_t* byte_stream, uint32_t size);
+        int serialize(uint8_t* byte_stream, uint64_t size);
+        int deserialize(const uint8_t* byte_stream, uint64_t size);
     };
 
 };

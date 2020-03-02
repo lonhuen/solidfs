@@ -151,7 +151,7 @@ namespace solid {
     for(auto i=0;i<20;i++) {
             Block tmp;
             // suppose we are writing in units of uint64_t
-            for(uint32_t j=0;j<512;j++) {
+            for(uint64_t j=0;j<512;j++) {
                 tmp.bl_entry[j] = i * 512 + j;
             }
             fs->bm->write_dblock(v[i],tmp);

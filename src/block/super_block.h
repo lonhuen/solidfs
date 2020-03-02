@@ -3,7 +3,7 @@
 namespace solid {
     union super_block{
         struct {
-            uint32_t magic_number;
+            uint64_t magic_number;
 
             BlockID nr_block;
 

@@ -12,7 +12,7 @@ namespace solid {
         Storage* storage;
 
     public:
-        const static uint32_t nr_inode_per_block = config::block_size/sizeof(INode);
+        const static uint64_t nr_inode_per_block = config::block_size/sizeof(INode);
 
         INodeManager(Storage* storage);
         virtual void mkfs();
