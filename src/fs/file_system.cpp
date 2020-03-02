@@ -142,7 +142,7 @@ namespace solid {
         // update the acm time
         inode.atime = time(nullptr);
         inode.ctime = inode.atime;
-        inode.mtime = inode.mtime;
+        inode.mtime = inode.atime;
 
 
         if(offset + size > inode.block * config::block_size) {
@@ -652,7 +652,7 @@ namespace solid {
 
         inode.atime = time(nullptr);
         inode.ctime = inode.atime;
-        inode.mtime = inode.mtime;
+        inode.mtime = inode.atime;
         // extend
         if(size > inode.size) {
             uint8_t* buffer = new uint8_t[size - inode.size];
