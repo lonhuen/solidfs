@@ -229,8 +229,17 @@ extern "C" {
                 inode.atime = inode.ctime;
                 inode.mtime = inode.ctime;
             } else {
-                inode.atime = ts[0].tv_sec;
-                inode.mtime = ts[1].tv_sec;
+                if(ts[0].tv_nsec == UTIME_NOW) {
+                    inode.atime = inode.ctime;
+                } else if (ts[0].tv_nsec != UTIME_OMIT) {
+                    inode.atime = ts[0].tv_sec;
+                }
+
+                if(ts[1].tv_nsec == UTIME_NOW) {
+                    inode.mtime = inode.ctime;
+                } else if (ts[1].tv_nsec != UTIME_OMIT) {
+                    inode.mtime = ts[1].tv_sec;
+                }
             }
             fs->im->write_inode(id,inode);
             return 0;
