@@ -37,6 +37,9 @@ namespace solid {
       inode.uid = context->uid;
       inode.gid = context->gid;
       inode.mode = mode & (~context->umask);
+      inode.atime = time(nullptr);
+      inode.ctime = inode.atime;
+      inode.mtime = inode.atime;
       return inode;
     }
     
@@ -50,6 +53,9 @@ namespace solid {
       inode.uid = context->uid;
       inode.gid = context->gid;
       inode.mode = mode & (~context->umask);
+      inode.atime = time(nullptr);
+      inode.ctime = inode.atime;
+      inode.mtime = inode.atime;
     }
   };
 

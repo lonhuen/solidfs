@@ -139,6 +139,12 @@ namespace solid {
         if(offset + size > maximum_file_size)
             throw fs_exception(std::errc::file_too_large,
                 "@write ",id," file too large");
+        // update the acm time
+        inode.atime = time(nullptr);
+        inode.ctime = inode.atime;
+        inode.mtime = inode.mtime;
+
+
         if(offset + size > inode.block * config::block_size) {
             // the last block index [)
             uint32_t nr_allocate_blocks = ((config::mod_block_size(offset+size) == 0) ?
@@ -644,6 +650,9 @@ namespace solid {
             throw fs_exception(std::errc::file_too_large,
                 "@write ",id," file too large");
 
+        inode.atime = time(nullptr);
+        inode.ctime = inode.atime;
+        inode.mtime = inode.mtime;
         // extend
         if(size > inode.size) {
             uint8_t* buffer = new uint8_t[size - inode.size];
@@ -672,6 +681,7 @@ namespace solid {
             truncate(id,0);
             im->free_inode(id);
         } else {
+            inode.ctime = time(nullptr);
             im->write_inode(id,inode);
         }
     }

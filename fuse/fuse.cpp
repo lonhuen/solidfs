@@ -470,7 +470,6 @@ extern "C" {
 }
 
 bool is_positive_int(char *arg) {
-    int i = 0;
     if (arg == nullptr) {
         return false;
     }
