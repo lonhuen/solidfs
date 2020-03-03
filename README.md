@@ -26,6 +26,7 @@
         sudo apt-get install python3 python3-pip python3-setuptools python3-wheel
         sudo apt-get install ninja-build
         sudo apt-get install pkg-config
+        sudo apt-get install python3-pip
         pip3 install meson
       * Add meson to the `PATH`
         ``` shell
@@ -57,6 +58,7 @@
         cd build
         meson ..
         ninja
+        pip3 install pytest
         sudo python3 -m pytest test/
         sudo ninja install
         ```
