@@ -177,18 +177,6 @@
      ./CoreTests `realpath <mount_pt>`
      ```
 
-
-
-
-## Todo
-
-* `Open` in sys call test sometimes failed `unlink not implemented`
-* Add more testcases
-* Add Ref
-* After fixing the bug in `write_directory`, we have got one new bug in `CoreTests`. Fix it!
-
-
-
 ## Acknowledgements
 
 - [ ] to be added
