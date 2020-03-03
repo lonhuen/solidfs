@@ -50,7 +50,7 @@
       ```
      
     * libFuse 3 (required)
-      * Installation
+      * Installation (in home directory - run "cd" if directly followed from previous step)
         ``` shell
         git clone https://github.com/libfuse/libfuse.git
         cd libfuse
