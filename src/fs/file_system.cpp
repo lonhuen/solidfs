@@ -4,6 +4,7 @@
 #include <stack>
 #include "fs/file_system.h"
 #include "storage/memory_storage.h"
+#include "storage/file_storage.h"
 #include "block/freelist_blockmanager.h"
 #include "block/block.h"
 #include "directory/directory.h"
@@ -13,7 +14,8 @@ namespace solid {
     FileSystem::FileSystem(BlockID nr_blocks,BlockID nr_iblock_blocks) {
         //TODO(lonhh)
         // this should be actually initilized with a file or disk
-        storage = new MemoryStorage(nr_blocks);
+        //storage = new MemoryStorage(nr_blocks);
+        storage = new FileStorage(nr_blocks);
         bm = new FreeListBlockManager(storage);
         im = new INodeManager(storage);
 
