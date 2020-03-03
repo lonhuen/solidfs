@@ -53,9 +53,8 @@
     * libFuse 3
       * Installation
       
-      (libFuse 3 should be installed in ```/home/ubuntu```, run ```cd``` command if directly followed from previous step.)
-      
         ``` shell
+        cd
         git clone https://github.com/libfuse/libfuse.git
         cd libfuse
         mkdir build
@@ -91,9 +90,8 @@
 
 2. Installation
 
-   (The repo should be installed in ```/home/ubuntu```, run ```cd``` command if directly followed from previous step.)
-   
    ``` shell
+   cd
    git clone https://github.com/lonhuen/cs270.git
    ```
    
