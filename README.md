@@ -10,7 +10,8 @@
    * Architecture: x86_64
 
 1. Dependencies
-   Choose "yes" or "y" for all prompt, ignore error message in the terminal output. 
+
+   (Choose "yes" or "y" for all prompt, ignore error message in the terminal output.) 
     
     * gcc, g++, make, autoconf, automake, libtool, meso
       * Install
@@ -51,7 +52,9 @@
      
     * libFuse 3
       * Installation
-      libFuse 3 should be installed in ```/home/ubuntu```, run ```cd``` command if directly followed from previous step.
+      
+      (libFuse 3 should be installed in ```/home/ubuntu```, run ```cd``` command if directly followed from previous step.)
+      
         ``` shell
         git clone https://github.com/libfuse/libfuse.git
         cd libfuse
@@ -87,7 +90,9 @@
           ```
 
 2. Installation
-   The repo should be installed in ```/home/ubuntu```, run ```cd``` command if directly followed from previous step.
+
+   (The repo should be installed in ```/home/ubuntu```, run ```cd``` command if directly followed from previous step.)
+   
    ``` shell
    git clone https://github.com/lonhuen/cs270.git
    ```
