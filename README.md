@@ -4,16 +4,15 @@
 
 0. Test Environment
 
-   Instance type: m1.large
+   * Instance type: m1.large
+   * Image name: ubuntu-15.10
+   * Image ID: emi-67a061da
+   * Architecture: x86_64
 
-   Image name: ubuntu-15.10
-   
-   Image ID: emi-67a061da
-
-   Architecture: x86_64
-
-1. Dependencies (required - choose yes for all prompts)
-    * gcc, g++, make, autoconf, automake, libtool, meso(required)
+1. Dependencies
+   Choose "yes" or "y" for all prompt, ignore error message in the terminal output. 
+    
+    * gcc, g++, make, autoconf, automake, libtool, meso
       * Install
         ``` shell
         #sudo add-apt-repository ppa:ubuntu-toolchain-r/test
@@ -33,12 +32,13 @@
         # Add meson to PATH
         export PATH=$PATH:~/.local/bin/:~/cmake-3.16.4-Linux-x86_64/bin
         ```
-      * If there is something wrong with `source.list`, consider replacing the `source.list`
+      * If there is something wrong with `source.list`, consider replacing the `source.list` and run all previous commands
       
         ``` shell
         sudo mv /etc/apt/sources.list /etc/apt/sources.list.backup
         sudo wget https://gist.githubusercontent.com/lonhuen/2a4a5d9992bd831eb74a6b903107c927/raw/53dc53adac5faed5335072a11b5a30d7d41578a6/source.list.cs270 -O /etc/apt/sources.list
         ```
+   
     * Google Log
       ``` shell
       git clone https://github.com/google/glog
@@ -50,7 +50,8 @@
       ```
      
     * libFuse 3
-      * Installation (in /home/ubuntu directory - run "cd" if directly followed from previous step)
+      * Installation
+      libFuse 3 should be installed in /home/ubuntu directory, run "cd" if directly followed from previous step.
         ``` shell
         git clone https://github.com/libfuse/libfuse.git
         cd libfuse
@@ -63,7 +64,11 @@
         sudo ninja install
         ```
       * Configuration
-        * Open the file `/usr/local/etc/fuse.conf` and append `user_allow_other`
+        * Open the file `/usr/local/etc/fuse.conf` (sudo is necessary to edit a readonly file), 
+          ``` shell
+          sudo vim /usr/local/etc/fuse.conf
+          ```
+          and append `user_allow_other`
           ``` shell
           # The file /etc/fuse.conf allows for the following parameters:
           #
@@ -79,6 +84,7 @@
         
           ``` shell
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/:/usr/local/lib/x86_64-linux-gnu/
+          ```
 
 2. Installation
    ``` shell
