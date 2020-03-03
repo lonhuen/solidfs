@@ -12,7 +12,7 @@
 
    Architecture: x86_64
 
-1. Dependencies (choose yes for all prompts)
+1. Dependencies (required - choose yes for all prompts)
     * gcc, g++, make, autoconf, automake, libtool, meso(required)
       * Install
         ``` shell
@@ -39,7 +39,7 @@
         sudo mv /etc/apt/sources.list /etc/apt/sources.list.backup
         sudo wget https://gist.githubusercontent.com/lonhuen/2a4a5d9992bd831eb74a6b903107c927/raw/53dc53adac5faed5335072a11b5a30d7d41578a6/source.list.cs270 -O /etc/apt/sources.list
         ```
-    * Google Log (required)
+    * Google Log
       ``` shell
       git clone https://github.com/google/glog
       cd glog
@@ -49,8 +49,8 @@
       sudo make install
       ```
      
-    * libFuse 3 (required)
-      * Installation (in home directory - run "cd" if directly followed from previous step)
+    * libFuse 3
+      * Installation (in /home/ubuntu directory - run "cd" if directly followed from previous step)
         ``` shell
         git clone https://github.com/libfuse/libfuse.git
         cd libfuse
@@ -91,7 +91,7 @@
    set(ENABLE_TEST true)
    ```
 
-3. Run Solid File System (in build directory)
+3. Run Solid File System (in /home/ubuntu/cs270/build directory)
 
     ``` shell
     # creat the mount point in build directory
