@@ -12,7 +12,7 @@
 
    Architecture: x86_64
 
-1. Dependencies
+1. Dependencies (choose yes for all prompts)
     * gcc, g++, make, autoconf, automake, libtool, meso(required)
       * Install
         ``` shell
