@@ -70,7 +70,7 @@
           ``` shell
           sudo vim /usr/local/etc/fuse.conf
           ```
-          and append `user_allow_other`
+          and uncomment `user_allow_other`
           ``` shell
           # The file /etc/fuse.conf allows for the following parameters:
           #
@@ -80,7 +80,15 @@
           # allow_other if you want users other than the owner to access a mounted fuse.
           # This option must appear on a line by itself. There is no value, just the
           # presence of the option.
+
           user_allow_other
+
+
+          # mount_max = n - this option sets the maximum number of mounts.
+          # Currently (2014) it must be typed exactly as shown
+          # (with a single space before and after the equals sign).
+
+          #mount_max = 1000
           ```
         * Library Path
         
@@ -96,6 +104,7 @@
    ```
    
    * Google Test: comment out this line in `cs270/CMakeLists.txt` (line 11)
+   
    ``` cmake
    set(ENABLE_TEST true)
    ```
@@ -127,6 +136,9 @@
 4. Run Tests (optional - all in cs270/build directory)
 
    open another terminal
+   ``` shell
+   cd cs270/build
+   ```
 
    * test_syscall. The corresponding files are in `cs270/test/fuse/`
 
@@ -140,12 +152,6 @@
      ``` shell
      cd build
      ./FuseTests `realpath <mount_pt>`
-     ```
-   * Unit tests.
-   
-     ``` shell
-     cd build
-     ./CoreTests `realpath <mount_pt>`
      ```
 
 ## Acknowledgements
