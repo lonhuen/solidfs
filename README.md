@@ -12,7 +12,6 @@
 
    Architecture: x86_64
 
-
 1. Dependencies
     * gcc, g++, make, autoconf, automake, libtool, meso(required)
       * Install
@@ -48,22 +47,7 @@
       make -j
       sudo make install
       ```
-
-    * Google Test (optional, skip this if you don't want to do unit tests)
-      In order to skip unit test, comment out this line `CMakeLists.txt`
-      ``` cmake
-      set(ENABLE_TEST true)
-      ```
-      To install Google Test
-      ``` shell
-      git clone https://github.com/google/googletest
-      cd googletest
-      mkdir build
-      cd build
-      cmake ..
-      make
-      sudo make install
-      ```
+     
     * libFuse 3 (required)
       * Installation
         ``` shell
@@ -94,22 +78,17 @@
           ``` shell
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/:/usr/local/lib/x86_64-linux-gnu/
 
-2. Build from source
+2. Installation
+   ``` shell
+   git clone https://github.com/lonhuen/cs270.git
+   cd cs270
+   ```
+   
+   * Google Test: comment out this line in `cs270/CMakeLists.txt` (line 11)
+   ``` cmake
+   set(ENABLE_TEST true)
+   ```
 
-    If the `glog`, `googletest` or `libfuse` is installed in a self-defined location, by setting Environment Variables
-    1. GLOG_ROOT, where `${GLOG_ROOT}/include` has the header files and `${GLOG_ROOT}/lib` has the library files.
-    2. GTEST_ROOT, similiar as above
-    3. FUSE_ROOT, similiar as above
-
-    cmake will find the include directories and libraries.
-
-    To build from source,
-
-    ``` shell
-    mkdir build
-    cd build
-    cmake ..
-    ```
 3. Run Solid File System (in build directory)
 
     ``` shell
@@ -120,7 +99,7 @@
     ./solidFS
     ```
 
-4. Run Tests (all in build directory)
+4. Run Tests (optional - all in build directory)
 
    open another terminal
 
