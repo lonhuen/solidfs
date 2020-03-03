@@ -51,7 +51,7 @@
      
     * libFuse 3
       * Installation
-      libFuse 3 should be installed in /home/ubuntu directory, run "cd" if directly followed from previous step.
+      libFuse 3 should be installed in ```/home/ubuntu```, run ```cd``` command if directly followed from previous step.
         ``` shell
         git clone https://github.com/libfuse/libfuse.git
         cd libfuse
@@ -87,9 +87,9 @@
           ```
 
 2. Installation
+   The repo should be installed in ```/home/ubuntu```, run ```cd``` command if directly followed from previous step.
    ``` shell
    git clone https://github.com/lonhuen/cs270.git
-   cd cs270
    ```
    
    * Google Test: comment out this line in `cs270/CMakeLists.txt` (line 11)
@@ -97,22 +97,31 @@
    set(ENABLE_TEST true)
    ```
 
-3. Run Solid File System (in /home/ubuntu/cs270/build directory)
+3. Run Solid File System (in cs270/build directory)
 
     ``` shell
+    # create build directory
+    cd cs270
+    mkdir build
     # creat the mount point in build directory
     cd build
-    mkdir temp
+    mkdir <mount_pt>
+    # make file system
+    cmake ..
+    make
     # run file system
-    ./solidFS temp <nr_block> <nr_iblock>
+    ./solidFS <mount_pt> <nr_block> <nr_iblock>
     ```
-    An example command to run the file system is
+    An example command to run the file system is under cs270/build
     
     ```shell
+    mkdir temp
+    cmake ..
+    make
     ./solidFS temp 262666 9
     ```
 
-4. Run Tests (optional - all in build directory)
+4. Run Tests (optional - all in cs270/build directory)
 
    open another terminal
 
@@ -120,8 +129,7 @@
 
      ``` shell
      # syscall Tests
-     cd build
-     sudo ./syscallTest `realpath temp`
+     ./syscallTest `realpath <mount_pt>`
      ```
       test cases in test_syscall:
       1. test_mknod: test mknod 
@@ -160,13 +168,13 @@
 
      ``` shell
      cd build
-     sudo ./FuseTests
+     ./FuseTests `realpath <mount_pt>`
      ```
    * Unit tests.
    
      ``` shell
      cd build
-     ./CoreTests
+     ./CoreTests `realpath <mount_pt>`
      ```
 
 
