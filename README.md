@@ -96,7 +96,12 @@
     cd build
     mkdir temp
     # run file system
-    ./solidFS
+    ./solidFS temp <nr_block> <nr_iblock>
+    ```
+    An example command to run the file system is
+    
+    ```shell
+    ./solidFS temp 262666 9
     ```
 
 4. Run Tests (optional - all in build directory)
