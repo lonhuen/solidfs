@@ -5,7 +5,7 @@
 0. Test Environment
 
    * Instance type: m1.large
-   * Image name: ubuntu-15.10
+   * Image distribute: ubuntu-15.10
    * Image ID: emi-67a061da
    * Architecture: x86_64
 
@@ -125,46 +125,14 @@
 
    open another terminal
 
-   * test_syscall. The corresponding file is `test/fuse/teset_syscall.c`
+   * test_syscall. The corresponding files are in `cs270/test/fuse/`
 
      ``` shell
      # syscall Tests
      ./syscallTest `realpath <mount_pt>`
      ```
-      test cases in test_syscall:
-      1. test_mknod: test mknod 
-      2. test_mkdir: test mkdir
-      3. test_open: test open
-        (above three taken from https://github.com/libfuse/libfuse/blob/master/test/test_syscalls.c)
-      4. test_read_seek:
-          - read from *start* of file for *size* bytes <= *filesize*
-          - seek to *offset* < *filesize*, read *size* bytes, where *offset* + *size* <= *filesize*
-          - seek to *offset* < *filesize*, read *size* bytes, where *offset* + *size* > *filesize*
-          - seek to *offset* > *filesize*
-      5. test_write:
-          - create and write a file
-          - open an existing file, write from start of file
-          - TODO: add test case to open an existing file, write from *offset* of file
-      6. test_mkdir_add:
-          - create a directory
-          - create nested directories: mkdir("testdir2/testdir"), where both *testdir2* and *testdir* not exists.
-          - create nested directories: mkdir("testdir2"), mkdir("testdir2/testdir")
-          - TODO: need to fix unlink --> occasionlly, there may be `unlink not implemented` error. When this occurs, there will be *testfile* file remained in the temp/ folder, which leads to `mkdir() - file exists` error in this test case. 
-      7. test_readdir:
-          - create the following structure
-
-            testdir/\
-            |------ testdir/ (empty dir)\
-            |------ testdir2/ (contains testfile2) \
-            |------ testfile (a regular file)
-          - read testdir to check entry number, and file content
-      8. test_rmdir: 
-          - remove empty directory
-          - remove directory with file
-          - remove directory with sub directory
-          - remove directory with sub directory, where the sub directory has files in it
-
-   * Simple read and write test. The corresponding file is `test/fuse/file_operation_test.cpp`
+      
+   * Simple read and write test. The corresponding file is `cs270/test/fuse/file_operation_test.cpp`
 
      ``` shell
      cd build
