@@ -36,12 +36,17 @@ namespace solid {
         }
     }
 
-    INodeManager::INodeManager(Storage* p_storage) {
+    INodeManager::INodeManager(Storage* p_storage,const super_block* p_sb) {
         this->storage = p_storage;
-        super_block sb;
-        storage->read_block(0,sb.data);
-        this->s_iblock = sb.s_iblock;
-        this->nr_iblock = sb.nr_iblock;
+        if(p_sb == nullptr) {
+            super_block sb;
+            storage->read_block(0,sb.data);
+            this->s_iblock = sb.s_iblock;
+            this->nr_iblock = sb.nr_iblock;
+        } else {
+            this->s_iblock = p_sb->s_iblock;
+            this->nr_iblock = p_sb->nr_iblock;
+        }
     }
 
     INode INodeManager::read_inode(INodeID id) {

@@ -10,7 +10,7 @@ namespace solid {
         const BlockID capacity;
 
     public:
-        FileStorage(uint64_t nr_blocks, const char* path="/dev/vdb");
+        FileStorage(uint64_t nr_blocks, const std::string& path);
         ~FileStorage();
         void read_block(BlockID id, uint8_t* dst);
         void write_block(BlockID id, const uint8_t* src);

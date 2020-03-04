@@ -25,7 +25,7 @@ namespace solid {
     public:
         // just used for DEBUG
         FileSystem() {};
-        FileSystem(BlockID nr_blocks,BlockID nr_iblock_blocks);
+        FileSystem(BlockID nr_blocks,BlockID nr_iblock_blocks,const std::string& path="");
         void mkfs();
 
         int read(INodeID id,uint8_t* dst,uint64_t size,uint64_t offset);

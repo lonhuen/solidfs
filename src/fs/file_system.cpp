@@ -11,11 +11,14 @@
 #include "utils/fs_exception.h"
 
 namespace solid {
-    FileSystem::FileSystem(BlockID nr_blocks,BlockID nr_iblock_blocks) {
+    FileSystem::FileSystem(BlockID nr_blocks,BlockID nr_iblock_blocks,const std::string& path) {
         //TODO(lonhh)
         // this should be actually initilized with a file or disk
-        //storage = new MemoryStorage(nr_blocks);
-        storage = new FileStorage(nr_blocks);
+        if(path == "") {
+            storage = new MemoryStorage(nr_blocks);
+        } else {
+            storage = new FileStorage(nr_blocks,path);
+        }
         init = true;
 
         storage->read_block(0,sb.data);
@@ -34,8 +37,8 @@ namespace solid {
             init = false;
         }
         
-        bm = new FreeListBlockManager(storage);
-        im = new INodeManager(storage);
+        bm = new FreeListBlockManager(storage,&sb);
+        im = new INodeManager(storage,&sb);
 
         maximum_file_size = config::data_ptr_cnt - 3;
         const uint64_t factor = config::block_size/sizeof(BlockID);

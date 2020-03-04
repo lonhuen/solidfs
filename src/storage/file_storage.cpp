@@ -5,7 +5,7 @@
 #include <iostream>
 
 namespace solid {
-    FileStorage::FileStorage(BlockID capacity, const char* path)
+    FileStorage::FileStorage(BlockID capacity, const std::string& path)
         : capacity(capacity), file(path,std::fstream::in | std::fstream::out) {
         if(!file.good()) {
             throw fs_error("Fail to open the file ",path," for storage");
