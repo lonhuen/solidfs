@@ -8,6 +8,7 @@
 #include "inode/inode_manager.h"
 #include "block/block_manager.h"
 #include "directory/directory.h"
+#include "block/super_block.h"
 
 namespace solid {
     //TODO(lonhh) when should we update the inode?
@@ -17,7 +18,9 @@ namespace solid {
         INodeManager* im;
         BlockManager* bm;
         Storage* storage;
+        super_block sb;
         uint64_t maximum_file_size;
+        bool init;
 
     public:
         // just used for DEBUG

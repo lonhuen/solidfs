@@ -1,4 +1,4 @@
-#include "storage/memory_storage.h"
+#include "storage/file_storage.h"
 #include "utils/log_utils.h"
 #include "utils/fs_exception.h"
 #include <cstring>
@@ -25,7 +25,7 @@ namespace solid {
             throw fs_error("@read_block ",id," out of range ",capacity);
         }
         file.seekg(id * config::block_size);
-        file.read(dst, config::block_size);
+        file.read((char*)dst, config::block_size);
         if(file.fail()) {
             throw fs_error("read_block ", id, " failed.");
         }
@@ -41,7 +41,7 @@ namespace solid {
             throw fs_error("@write_block ",id," out of range ",capacity);
         }
         file.seekg(id * config::block_size);
-        file.write(src, config::block_size);
+        file.write((char*)src, config::block_size);
         if(file.fail()) {
             throw fs_error("write_block ", id, " failed.");
         }

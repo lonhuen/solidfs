@@ -18,11 +18,6 @@ namespace solid {
     }
 
     void INodeManager:: mkfs() {
-        super_block sb;
-        storage->read_block(0,sb.data);
-        this->s_iblock = sb.s_iblock;
-        this->nr_iblock = sb.nr_iblock;
-        
         Block bl;
         storage->read_block(s_iblock,bl.data);
 
@@ -43,6 +38,10 @@ namespace solid {
 
     INodeManager::INodeManager(Storage* p_storage) {
         this->storage = p_storage;
+        super_block sb;
+        storage->read_block(0,sb.data);
+        this->s_iblock = sb.s_iblock;
+        this->nr_iblock = sb.nr_iblock;
     }
 
     INode INodeManager::read_inode(INodeID id) {

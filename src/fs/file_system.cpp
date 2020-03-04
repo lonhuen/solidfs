@@ -16,20 +16,27 @@ namespace solid {
         // this should be actually initilized with a file or disk
         //storage = new MemoryStorage(nr_blocks);
         storage = new FileStorage(nr_blocks);
+        init = true;
+
+        storage->read_block(0,sb.data);
+
+        if(sb.magic_number != 0xdeadbeef) {
+            sb.nr_block = nr_blocks;
+
+            sb.s_iblock = 1;
+            sb.nr_iblock = nr_iblock_blocks;
+
+            sb.s_dblock = 1 + nr_iblock_blocks;
+            sb.nr_dblock = nr_blocks - 1 - nr_iblock_blocks;
+
+            sb.magic_number = 0xdeadbeef;
+            storage->write_block(0,sb.data);
+            init = false;
+        }
+        
         bm = new FreeListBlockManager(storage);
         im = new INodeManager(storage);
 
-        super_block sb;
-        sb.nr_block = nr_blocks;
-        
-        sb.s_iblock = 1;
-        sb.nr_iblock = nr_iblock_blocks;
-    
-        sb.s_dblock = 1 + nr_iblock_blocks;
-        sb.nr_dblock = nr_blocks - 1 - nr_iblock_blocks;
-
-        storage->write_block(0,sb.data);
-        
         maximum_file_size = config::data_ptr_cnt - 3;
         const uint64_t factor = config::block_size/sizeof(BlockID);
         maximum_file_size += factor + factor * factor + factor * factor * factor;

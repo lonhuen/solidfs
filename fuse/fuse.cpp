@@ -41,7 +41,7 @@ extern "C" {
     void*s_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
         LOG(INFO) << "#init";
         // fs = new FileSystem(10 + 512 + 512 * 512, 9);
-        fs->mkfs();
+        if(!fs->init) fs->mkfs();
     }
     
     int s_getattr(const char* path, struct stat* st, struct fuse_file_info *fi) {

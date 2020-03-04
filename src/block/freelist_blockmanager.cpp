@@ -11,6 +11,7 @@ namespace solid {
      *
     */
     void FreeListBlockManager:: mkfs() {
+        //TODO(lonhh) maybe this can be omitted
         p_storage->read_block(0, sblock.data);
 
         auto i = sblock.s_dblock;
