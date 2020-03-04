@@ -6,7 +6,7 @@
 
 namespace solid {
     FileStorage::FileStorage(BlockID capacity, const char* path)
-        : capacity(capacity), file(path,std::fstream::in | std::fstream::out | std::fstream::trunc) {
+        : capacity(capacity), file(path,std::fstream::in | std::fstream::out) {
         if(!file.good()) {
             throw fs_error("Fail to open the file ",path," for storage");
         }
@@ -40,7 +40,7 @@ namespace solid {
         if(id >= capacity){
             throw fs_error("@write_block ",id," out of range ",capacity);
         }
-        file.seekg(id * config::block_size);
+        file.seekp(id * config::block_size);
         file.write((char*)src, config::block_size);
         if(file.fail()) {
             throw fs_error("write_block ", id, " failed.");
