@@ -113,7 +113,7 @@
    git clone https://github.com/lonhuen/cs270.git
    ```
    
-   * Google Test: comment out this line in `cs270/CMakeLists.txt` (line 11)
+   Comment out this line in `cs270/CMakeLists.txt` (line 11).
    
    ``` cmake
    set(ENABLE_TEST true)
