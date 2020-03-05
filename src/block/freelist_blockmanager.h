@@ -3,7 +3,7 @@
 namespace solid {
     class FreeListBlockManager: public BlockManager {
     public:
-        FreeListBlockManager(Storage* p_storage) : BlockManager(p_storage) {};
+        FreeListBlockManager(Storage* p_storage,const super_block* p_sb=nullptr);
 
         const static BlockID nr_blocks_per_group = config::block_size / sizeof(BlockID);
             

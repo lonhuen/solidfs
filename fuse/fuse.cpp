@@ -18,6 +18,7 @@
 #include "directory/directory.h"
 #include "utils/fs_exception.h"
 #include "utils/string_utils.h"
+#include "utils/cxxopts.hpp"
 
 
 using namespace solid;
@@ -41,7 +42,7 @@ extern "C" {
     void*s_init(struct fuse_conn_info *conn, struct fuse_config *cfg){
         LOG(INFO) << "#init";
         // fs = new FileSystem(10 + 512 + 512 * 512, 9);
-        fs->mkfs();
+        if(!fs->init) fs->mkfs();
     }
     
     int s_getattr(const char* path, struct stat* st, struct fuse_file_info *fi) {
@@ -495,32 +496,44 @@ bool is_positive_int(char *arg) {
 } 
  
 int main(int argc, char *argv[]) {
-    // TODO: change this later to customize size based on argv
-    // command ./solidFS folder nr_block nr_iblock
-    if (argc != 4) {
-        fprintf(stderr, "Usage: ./filesystem mount_directory nr_block nr_iblock\n");
-        exit(EXIT_FAILURE);
-    }
-
-    if (is_positive_int(argv[2]) == false) {
-        fprintf(stderr, "nr_block needs to be a positive integer\n");
-        exit(EXIT_FAILURE);
-    }
-    if (is_positive_int(argv[3]) == false) {
-        fprintf(stderr, "nr_iblock need to be a positive integer\n");
-        exit(EXIT_FAILURE);   
-    }
-
-    int nr_block = 0;
-    std::stringstream(argv[2]) >> nr_block;
-    
-    int nr_iblock = 0;
-    std::stringstream(argv[3]) >> nr_iblock;    
-
     LogUtils::log_level = "0";
     LogUtils::init(argv[0]);
-    fs = new FileSystem(nr_block, nr_iblock);
-    //fs->mkfs();
+
+    cxxopts::Options options("solidFS", "solid file system");
+
+    options.add_options()
+        ("b,block", "number of blocks", cxxopts::value<uint64_t>()->default_value("2097253"))
+        ("i,inode", "number of inode", cxxopts::value<uint64_t>()->default_value("100"))
+        ("s,storage", "storage in GB", cxxopts::value<uint64_t>())
+        ("e,entry", "number of files", cxxopts::value<uint64_t>())
+        ("f,file", "storage file", cxxopts::value<std::string>()->default_value("/dev/vdb"))
+        ("m,mount", "mount point", cxxopts::value<std::string>()->default_value("temp"))
+        ("h,help", "Print usage");
+
+    auto result = options.parse(argc, argv);
+
+    if (result.count("help")) {
+        std::cout << options.help() << std::endl;
+        exit(0);
+    }
+
+    auto nr_block = result["block"].as<uint64_t>();
+    auto nr_iblock = result["inode"].as<uint64_t>();
+    if (result.count("entry")) {
+        auto nr_entry = result["entry"].as<uint64_t>();
+        nr_iblock = nr_entry / (config::block_size / config::inode_size);
+        if(nr_iblock > nr_entry * (config::block_size / config::inode_size))
+            nr_iblock++;
+    }
+
+    if (result.count("storage")) {
+        auto nr_dblock = result["storage"].as<uint64_t>() * 1024 * 1024 * 1024 / config::block_size;
+        nr_block = nr_dblock + nr_iblock + 1;
+    }
+    std::string path = result["file"].as<std::string>();
+
+    fs = new FileSystem(nr_block, nr_iblock,path);
+    
 
     fuse_operations s_oper;
     memset(&s_oper, 0, sizeof(s_oper));
@@ -549,7 +562,7 @@ int main(int argc, char *argv[]) {
  
     // call s_init here?
     int argcount = 0;
-    char *argument[12];
+    char* argument[12];
 
     char s[] = "-s"; // Use a single thread.
     char d[] = "-d"; // Print debuging output.
@@ -558,7 +571,10 @@ int main(int argc, char *argv[]) {
     char p[] = "default_permissions"; // Defer permissions checks to kernel
     char r[] = "allow_other"; // Allow all users to access files
 
-    char *mount_point = argv[1];
+
+    std::string mp = result["mount"].as<std::string>();
+    std::vector<char> fcv(mp.data(), mp.data()+mp.size()+1u);
+    char *mount_point = fcv.data();
 
     argument[argcount++] = argv[0];
     argument[argcount++] = f;   
