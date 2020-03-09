@@ -500,7 +500,7 @@ int main(int argc, char *argv[]) {
     LogUtils::log_level = "0";
     LogUtils::init(argv[0]);
 
-    cxxopts::Options options("solidFS", "solid file system");
+    cxxopts::Options options("sudo ./solidFS", "solid file system");
 
     options.add_options()
         ("b,block", "number of blocks", cxxopts::value<uint64_t>()->default_value("2097253"))
@@ -508,11 +508,18 @@ int main(int argc, char *argv[]) {
         ("s,storage", "storage in GB", cxxopts::value<uint64_t>())
         ("e,entry", "number of files", cxxopts::value<uint64_t>())
         ("f,file", "storage file", cxxopts::value<std::string>()->default_value("/dev/vdb"))
-        ("m,mount", "mount point", cxxopts::value<std::string>()->default_value("temp"))
+        ("m,mount", "mount point", cxxopts::value<std::string>())
         ("h,help", "Print usage");
 
     auto result = options.parse(argc, argv);
 
+    // check mount point
+    if (!result.count("mount")) {
+        std::cout << options.help() << std::endl;
+        exit(0);
+    }
+
+    // help option
     if (result.count("help")) {
         std::cout << options.help() << std::endl;
         exit(0);
