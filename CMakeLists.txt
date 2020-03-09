@@ -8,7 +8,7 @@ endif ()
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
-set(ENABLE_TEST true)
+#set(ENABLE_TEST true)
 set(ENABLE_FUSE_TEST true)
 
 # http://rpg.ifi.uzh.ch/docs/glog.html
