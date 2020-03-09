@@ -15,6 +15,7 @@
 #include "fs/file_system.h"
 #include "inode/inode.h"
 #include "block/super_block.h"
+#include "block/block.h"
 #include "directory/directory.h"
 #include "utils/fs_exception.h"
 #include "utils/string_utils.h"
@@ -503,7 +504,7 @@ int main(int argc, char *argv[]) {
 
     options.add_options()
         ("b,block", "number of blocks", cxxopts::value<uint64_t>()->default_value("2097253"))
-        ("i,inode", "number of inode", cxxopts::value<uint64_t>()->default_value("100"))
+        ("i,inode", "number of inode", cxxopts::value<uint64_t>()->default_value("2000"))
         ("s,storage", "storage in GB", cxxopts::value<uint64_t>())
         ("e,entry", "number of files", cxxopts::value<uint64_t>())
         ("f,file", "storage file", cxxopts::value<std::string>()->default_value("/dev/vdb"))
@@ -533,7 +534,12 @@ int main(int argc, char *argv[]) {
     std::string path = result["file"].as<std::string>();
 
     fs = new FileSystem(nr_block, nr_iblock,path);
-    
+
+    if(!fs->init) {
+        Block block;
+        std::memset(block.data, 0, config::block_size);
+        fs->storage->write_block(nr_block - 1, block.data);
+    }
 
     fuse_operations s_oper;
     memset(&s_oper, 0, sizeof(s_oper));
@@ -577,6 +583,7 @@ int main(int argc, char *argv[]) {
     char *mount_point = fcv.data();
 
     argument[argcount++] = argv[0];
+    argument[argcount++] = s;   
     argument[argcount++] = f;   
     argument[argcount++] = mount_point;
     argument[argcount++] = o;
