@@ -4,30 +4,42 @@
 #include <stack>
 #include "fs/file_system.h"
 #include "storage/memory_storage.h"
+#include "storage/file_storage.h"
 #include "block/freelist_blockmanager.h"
 #include "block/block.h"
 #include "directory/directory.h"
 #include "utils/fs_exception.h"
 
 namespace solid {
-    FileSystem::FileSystem(BlockID nr_blocks,BlockID nr_iblock_blocks) {
+    FileSystem::FileSystem(BlockID nr_blocks,BlockID nr_iblock_blocks,const std::string& path) {
         //TODO(lonhh)
         // this should be actually initilized with a file or disk
-        storage = new MemoryStorage(nr_blocks);
-        bm = new FreeListBlockManager(storage);
-        im = new INodeManager(storage);
+        if(path == "") {
+            storage = new MemoryStorage(nr_blocks);
+        } else {
+            storage = new FileStorage(nr_blocks,path);
+        }
+        init = true;
 
-        super_block sb;
-        sb.nr_block = nr_blocks;
-        
-        sb.s_iblock = 1;
-        sb.nr_iblock = nr_iblock_blocks;
-    
-        sb.s_dblock = 1 + nr_iblock_blocks;
-        sb.nr_dblock = nr_blocks - 1 - nr_iblock_blocks;
+        storage->read_block(0,sb.data);
 
-        storage->write_block(0,sb.data);
+        if(sb.magic_number != 0xdeadbeef) {
+            sb.nr_block = nr_blocks;
+
+            sb.s_iblock = 1;
+            sb.nr_iblock = nr_iblock_blocks;
+
+            sb.s_dblock = 1 + nr_iblock_blocks;
+            sb.nr_dblock = nr_blocks - 1 - nr_iblock_blocks;
+
+            sb.magic_number = 0xdeadbeef;
+            storage->write_block(0,sb.data);
+            init = false;
+        }
         
+        bm = new FreeListBlockManager(storage,&sb);
+        im = new INodeManager(storage,&sb);
+
         maximum_file_size = config::data_ptr_cnt - 3;
         const uint64_t factor = config::block_size/sizeof(BlockID);
         maximum_file_size += factor + factor * factor + factor * factor * factor;

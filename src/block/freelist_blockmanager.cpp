@@ -6,11 +6,22 @@
 #include "utils/fs_exception.h"
 
 namespace solid {
+
+    FreeListBlockManager::FreeListBlockManager(Storage* p_storage,const super_block* p_sb)
+        : BlockManager(p_storage) {
+            if(p_sb == nullptr) {
+                p_storage->read_block(0,sblock.data);
+            } else {
+                std::memcpy(sblock.data,p_sb->data,sizeof(super_block));
+            }
+        };
+
     /**
      * @brief write the first data block (i) with [i+512, i+1, i+2,...], then write the i+512 block
      *
     */
     void FreeListBlockManager:: mkfs() {
+        //TODO(lonhh) maybe this can be omitted
         p_storage->read_block(0, sblock.data);
 
         auto i = sblock.s_dblock;
